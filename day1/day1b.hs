@@ -7,9 +7,10 @@ getFirstRepeatingFrequency freqs =
 getFirstRepeatingFrequency'
   :: [Integer] -> Integer -> [String] -> [String] -> Integer
 getFirstRepeatingFrequency' seenFreqs total freqs allFreqs =
-  let freq         = head freqs
-      freqSign     = head freq
-      unsignedFreq = read (tail freq)
+  let freq           = head freqs
+      remainingFreqs = tail freqs
+      freqSign       = head freq
+      unsignedFreq   = read (tail freq)
       newFreq =
         if freqSign == '-' then total - unsignedFreq else total + unsignedFreq
   in  case newFreq `elem` seenFreqs of
@@ -17,7 +18,7 @@ getFirstRepeatingFrequency' seenFreqs total freqs allFreqs =
         False -> getFirstRepeatingFrequency'
           (newFreq : seenFreqs)
           newFreq
-          (if null (tail freqs) then allFreqs else tail freqs)
+          (if null remainingFreqs then allFreqs else remainingFreqs)
           allFreqs
 
 main :: IO ()
