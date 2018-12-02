@@ -1,8 +1,8 @@
 module Main where
 
 sumFrequencies :: [String] -> Integer
-sumFrequencies = foldl
-  (\total freq ->
+sumFrequencies = foldr
+  (\freq total ->
     let freqSign     = head freq
         unsignedFreq = read (tail freq)
     in  if freqSign == '-' then total - unsignedFreq else total + unsignedFreq
