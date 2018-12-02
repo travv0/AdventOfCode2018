@@ -1,5 +1,4 @@
 module Main where
-import           Data.List
 
 main :: IO ()
 main = interact (show . findMatch . lines)
