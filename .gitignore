@@ -1,3 +1,12 @@
+# Ignore all
+*
+
+# Unignore all with extensions
+!*.*
+
+# Unignore all dirs
+!*/
+
 *.exe
 *.hi
 *.o
@@ -340,3 +349,5 @@ ASALocalRun/
 
 # Local History for Visual Studio
 .localhistory/
+
+tags
