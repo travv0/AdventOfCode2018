@@ -7,16 +7,15 @@ main :: IO ()
 main = interact (show . findShortestReduction)
 
 findShortestReduction :: String -> Int
-findShortestReduction s = snd $ foldr
-  (\c (shortestChar, shortestLen) ->
-    let reducedPolymerLength =
-          length $ reduce (filter (\x -> toLower x /= c) s)
-    in  if reducedPolymerLength < shortestLen
-          then (c, reducedPolymerLength)
-          else (shortestChar, shortestLen)
-  )
-  ('a', maxBound :: Int)
-  ['a' .. 'z']
+findShortestReduction s =
+  snd $ foldr (rememberShortest s) ('a', maxBound :: Int) ['a' .. 'z']
+
+rememberShortest :: String -> Char -> (Char, Int) -> (Char, Int)
+rememberShortest s c (shortestChar, shortestLen) =
+  let reducedPolymerLength = length $ reduce (filter (\x -> toLower x /= c) s)
+  in  if reducedPolymerLength < shortestLen
+        then (c, reducedPolymerLength)
+        else (shortestChar, shortestLen)
 
 reduce :: String -> String
 reduce = reverse . foldl' addOrReduce "" . trim
