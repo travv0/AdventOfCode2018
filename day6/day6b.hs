@@ -19,7 +19,8 @@ maximumDistance :: Int
 maximumDistance = 10000
 
 main :: IO ()
-main = interact (show . length . notToFar maximumDistance . parseCoords . lines)
+main =
+  interact (show . length . notTooFar maximumDistance . parseCoords . lines)
 
 parseCoords :: [String] -> [Coord]
 parseCoords = map
@@ -54,5 +55,6 @@ allSurroundingCoords coords = concat
 totalDistance :: [Coord] -> Coord -> Int
 totalDistance coords coord = sum $ map (distance coord) coords
 
-notToFar :: Int -> [Coord] -> [Coord]
-notToFar maxDistance coords = filter ((<maxDistance) . totalDistance coords) $ allSurroundingCoords coords
+notTooFar :: Int -> [Coord] -> [Coord]
+notTooFar maxDistance coords =
+  filter ((< maxDistance) . totalDistance coords) $ allSurroundingCoords coords
