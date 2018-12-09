@@ -4,7 +4,7 @@ module Main where
 
 import           Data.List
 import           Data.Char
-import Data.Maybe
+import           Data.Maybe
 
 type Coord = (Int, Int)
 
@@ -16,16 +16,13 @@ data Bounds =
          } deriving Show
 
 main :: IO ()
-main = interact (show . bounds . parseCoords . lines)
+main = interact (show . findMaxClosest . parseCoords . lines)
 
 parseCoords :: [String] -> [Coord]
 parseCoords = map
   (\s ->
     let [x, y] = wordsWhen (== ',') (trim s) in (read x :: Int, read y :: Int)
   )
-
-number :: [a] -> [(Int, a)]
-number = zip [1 ..]
 
 wordsWhen :: (Char -> Bool) -> String -> [String]
 wordsWhen p s = case dropWhile p s of
@@ -46,41 +43,49 @@ bounds coords = Bounds lowX highX lowY highY
   lowY  = foldr (min . snd) (maxBound :: Int) coords
   highY = foldr (max . snd) 0 coords
 
-nonEdgePoints :: Bounds -> [Coord] -> [Coord]
-nonEdgePoints b coords = filter nonEdgePoint coords
- where
-  nonEdgePoint (x, y) =
-    not $ x == xMin b || x == xMax b || y == yMin b || y == yMax b
-
 edgePoint :: Bounds -> Coord -> Bool
 edgePoint b (x, y) = x == xMin b || x == xMax b || y == yMin b || y == yMax b
 
 infinitePoints :: Bounds -> [Coord] -> [Coord]
 infinitePoints b coords =
-  nub $ map fromJust $ filter isJust $ map (closestCoord coords) $ boundaryPoints b
+  nub
+    $ map fromJust
+    $ filter isJust
+    $ map (closestCoord coords)
+    $ boundaryPoints b
 
 boundaryPoints :: Bounds -> [Coord]
-boundaryPoints b =
-  filter (edgePoint b) $
-  concat $
-  map (\x ->
-                  map ((,) x)
-                      [yMin b..yMax b])
-  [xMin b..xMax b]
+boundaryPoints b = filter (edgePoint b) $ concat $ map
+  (\x -> map ((,) x) [yMin b .. yMax b])
+  [xMin b .. xMax b]
 
 closestCoord :: [Coord] -> Coord -> Maybe Coord
-closestCoord coords coord = foldl'
-  (getCloserCoord coord)
-  (Just $ head coords)
-  (tail coords)
+closestCoord coords coord =
+  foldr (getCloserCoord coord) (Just $ head coords) (tail coords)
 
-getCloserCoord :: Coord -> Maybe Coord -> Coord -> Maybe Coord
-getCloserCoord fromCoord mCloseCoord newCoord = case mCloseCoord of
-    Just closeCoord ->
-      let newDist = distance newCoord fromCoord
-          minDist = distance closeCoord fromCoord
-      in  if
-            | newDist < minDist  -> Just newCoord
-            | newDist == minDist -> Nothing
-            | otherwise          -> mCloseCoord
-    Nothing -> Nothing
+getCloserCoord :: Coord -> Coord -> Maybe Coord -> Maybe Coord
+getCloserCoord fromCoord newCoord mCloseCoord = case mCloseCoord of
+  Just closeCoord ->
+    let newDist = distance newCoord fromCoord
+        minDist = distance closeCoord fromCoord
+    in  if
+          | newDist < minDist  -> Just newCoord
+          | newDist == minDist -> Nothing
+          | otherwise          -> mCloseCoord
+  Nothing -> Nothing
+
+findMaxClosest :: [Coord] -> Int
+findMaxClosest coords = maximum $ map
+  (\coord ->
+    length $ filter (\c -> isJust c && fromJust c == coord) closestCoords
+  )
+  finitePoints
+ where
+  closestCoords = map (closestCoord coords) $ allSurroundingCoords coords
+  finitePoints =
+    filter (not . (flip elem) (infinitePoints (bounds coords) coords)) coords
+
+allSurroundingCoords :: [Coord] -> [Coord]
+allSurroundingCoords coords = concat
+  $ map (\x -> map ((,) x) [yMin b .. yMax b]) [xMin b .. xMax b]
+  where b = bounds coords
