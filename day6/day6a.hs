@@ -61,19 +61,15 @@ boundaryPoints b = filter (edgePoint b) $ concat $ map
   [yMin b .. yMax b]
 
 closestCoord :: [Coord] -> Coord -> Maybe Coord
-closestCoord coords coord =
-  foldr (getCloserCoord coord) (Just $ head coords) $ tail coords
-
-getCloserCoord :: Coord -> Coord -> Maybe Coord -> Maybe Coord
-getCloserCoord fromCoord testCoord mCloseCoord = case mCloseCoord of
-  Just closeCoord ->
-    let newDist = distance testCoord fromCoord
-        minDist = distance closeCoord fromCoord
-    in  if
-          | newDist < minDist  -> Just testCoord
-          | newDist == minDist -> Nothing
-          | otherwise          -> mCloseCoord
-  Nothing -> Nothing
+closestCoord coords fromCoord =
+  case
+      sortBy (\c d -> distance fromCoord c `compare` distance fromCoord d)
+             coords
+    of
+      (c : d : _) ->
+        if distance fromCoord c == distance fromCoord d then Nothing else Just c
+      (c : _) -> Just c
+      _       -> Nothing
 
 findMaxClosest :: [Coord] -> Int
 findMaxClosest coords = maximum $ map
@@ -101,13 +97,13 @@ printGrid coords width height = do
             y = i `div` width
         case mCoord of
           Just coord -> if (x, y) `elem` coords
-            then putStr [fromJust $ lookup coord letteredCoords]
-            else putStr [toLower $ fromJust $ lookup coord letteredCoords]
-          Nothing    -> putStr "."
+            then putStr [fromMaybe '.' $ lookup coord letteredCoords]
+            else putStr [toLower $ fromMaybe '.' $ lookup coord letteredCoords]
+          Nothing -> putStr "."
         if i `mod` width == width - 1 then putStr "\n" else return ()
       )
     $ zip [0 ..] closestCoords
 
 gridCoords :: Int -> Int -> [Coord]
-gridCoords width height = concat
-  $ map (\y -> map (swap . (,) y) [0 .. width - 1]) [0 .. height - 1]
+gridCoords width height =
+  concat $ map (\y -> map (swap . (,) y) [0 .. width - 1]) [0 .. height - 1]
