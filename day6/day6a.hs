@@ -69,18 +69,18 @@ boundaryPoints b =
   [xMin b..xMax b]
 
 closestCoord :: [Coord] -> Coord -> Maybe Coord
-closestCoord coords coord = foldr
+closestCoord coords coord = foldl'
   (getCloserCoord coord)
   (Just $ head coords)
   (tail coords)
 
-getCloserCoord :: Coord -> Coord -> Maybe Coord -> Maybe Coord
-getCloserCoord coord c d = case d of
-    Just e ->
-      let newDist = distance c coord
-          minDist = distance e coord
+getCloserCoord :: Coord -> Maybe Coord -> Coord -> Maybe Coord
+getCloserCoord fromCoord mCloseCoord newCoord = case mCloseCoord of
+    Just closeCoord ->
+      let newDist = distance newCoord fromCoord
+          minDist = distance closeCoord fromCoord
       in  if
-            | newDist < minDist  -> Just c
+            | newDist < minDist  -> Just newCoord
             | newDist == minDist -> Nothing
-            | otherwise          -> d
+            | otherwise          -> mCloseCoord
     Nothing -> Nothing
