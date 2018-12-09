@@ -91,21 +91,23 @@ allSurroundingCoords coords = concat
   $ map (\y -> map (swap . (,) y) [0 .. xMax b]) [0 .. yMax b]
   where b = bounds coords
 
-printGrid :: [Coord] -> IO ()
-printGrid coords = do
+printGrid :: [Coord] -> Int -> Int -> IO ()
+printGrid coords width height = do
   let letteredCoords = zip coords ['A' ..]
-      b              = bounds coords
-      closestCoords  = map (closestCoord coords) $ allSurroundingCoords coords
-  print b
+      closestCoords  = map (closestCoord coords) $ gridCoords width height
   mapM_
       (\(i, mCoord) -> do
-        let x = i `mod` (xMax b + 1)
-            y = i `div` (xMax b + 1)
+        let x = i `mod` width
+            y = i `div` width
         case mCoord of
           Just coord -> if (x, y) `elem` coords
             then putStr [fromJust $ lookup coord letteredCoords]
             else putStr [toLower $ fromJust $ lookup coord letteredCoords]
           Nothing    -> putStr "."
-        if i `mod` (xMax b + 1) == xMax b then putStr "\n" else return ()
+        if i `mod` width == width - 1 then putStr "\n" else return ()
       )
     $ zip [0 ..] closestCoords
+
+gridCoords :: Int -> Int -> [Coord]
+gridCoords width height = concat
+  $ map (\y -> map (swap . (,) y) [0 .. width - 1]) [0 .. height - 1]
