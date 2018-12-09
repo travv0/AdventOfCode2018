@@ -5,6 +5,7 @@ module Main where
 import           Data.List
 import           Data.Char
 import           Data.Maybe
+import           Data.Tuple
 
 type Coord = (Int, Int)
 
@@ -56,20 +57,20 @@ infinitePoints b coords =
 
 boundaryPoints :: Bounds -> [Coord]
 boundaryPoints b = filter (edgePoint b) $ concat $ map
-  (\x -> map ((,) x) [yMin b .. yMax b])
-  [xMin b .. xMax b]
+  (\y -> map (swap . (,) y) [xMin b .. xMax b])
+  [yMin b .. yMax b]
 
 closestCoord :: [Coord] -> Coord -> Maybe Coord
 closestCoord coords coord =
-  foldr (getCloserCoord coord) (Just $ head coords) (tail coords)
+  foldr (getCloserCoord coord) (Just $ head coords) $ tail coords
 
 getCloserCoord :: Coord -> Coord -> Maybe Coord -> Maybe Coord
-getCloserCoord fromCoord newCoord mCloseCoord = case mCloseCoord of
+getCloserCoord fromCoord testCoord mCloseCoord = case mCloseCoord of
   Just closeCoord ->
-    let newDist = distance newCoord fromCoord
+    let newDist = distance testCoord fromCoord
         minDist = distance closeCoord fromCoord
     in  if
-          | newDist < minDist  -> Just newCoord
+          | newDist < minDist  -> Just testCoord
           | newDist == minDist -> Nothing
           | otherwise          -> mCloseCoord
   Nothing -> Nothing
@@ -87,5 +88,24 @@ findMaxClosest coords = maximum $ map
 
 allSurroundingCoords :: [Coord] -> [Coord]
 allSurroundingCoords coords = concat
-  $ map (\x -> map ((,) x) [yMin b .. yMax b]) [xMin b .. xMax b]
+  $ map (\y -> map (swap . (,) y) [0 .. xMax b]) [0 .. yMax b]
   where b = bounds coords
+
+printGrid :: [Coord] -> IO ()
+printGrid coords = do
+  let letteredCoords = zip coords ['A' ..]
+      b              = bounds coords
+      closestCoords  = map (closestCoord coords) $ allSurroundingCoords coords
+  print b
+  mapM_
+      (\(i, mCoord) -> do
+        let x = i `mod` (xMax b + 1)
+            y = i `div` (xMax b + 1)
+        case mCoord of
+          Just coord -> if (x, y) `elem` coords
+            then putStr [fromJust $ lookup coord letteredCoords]
+            else putStr [toLower $ fromJust $ lookup coord letteredCoords]
+          Nothing    -> putStr "."
+        if i `mod` (xMax b + 1) == xMax b then putStr "\n" else return ()
+      )
+    $ zip [0 ..] closestCoords
