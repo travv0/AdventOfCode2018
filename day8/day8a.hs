@@ -18,12 +18,11 @@ main :: IO ()
 main = interact (show . sumMetadata . parseNodes . inputToInts)
 
 sumMetadata :: [Node] -> Int
-sumMetadata nodes = foldr
+sumMetadata = foldr
   (\n t -> case n of
     Node _ children ns -> t + sum ns + sumMetadata children
   )
   0
-  nodes
 
 parseNodes :: [Int] -> [Node]
 parseNodes [] = []
@@ -33,23 +32,22 @@ parseNodes (childCount : metadataCount : rest) = parseNodes' childCount
                                                              rest
  where
   parseNodes' :: Int -> Int -> Int -> [Int] -> [Node]
-  parseNodes' cc mc childCounter xs
-    = let nodeLength = lengthOfNode $ cc : mc : xs
-      in
-        [ Node
-            (Header cc mc)
-            (if cc == 0
-              then []
-              else parseNodes' (xs !! 0) (xs !! 1) cc (drop 2 xs)
-            )
-            (takeLast mc $ take (nodeLength - headerLength) xs)
-          ]
-          ++ if childCounter > 1
-               then
-                 let (nextCc : nextMc : nextRest) =
-                       drop (nodeLength - headerLength) xs
-                 in  parseNodes' nextCc nextMc (childCounter - 1) nextRest
-               else []
+  parseNodes' cc mc childCounter xs =
+    let nodeLength = lengthOfNode $ cc : mc : xs
+    in
+      Node
+          (Header cc mc)
+          (if cc == 0
+            then []
+            else parseNodes' (head xs) (xs !! 1) cc (drop 2 xs)
+          )
+          (takeLast mc $ take (nodeLength - headerLength) xs)
+        : if childCounter > 1
+            then
+              let (nextCc : nextMc : nextRest) =
+                    drop (nodeLength - headerLength) xs
+              in  parseNodes' nextCc nextMc (childCounter - 1) nextRest
+            else []
 parseNodes _ = []
 
 takeLast :: Int -> [a] -> [a]
