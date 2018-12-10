@@ -48,8 +48,9 @@ bounds coords = Bounds lowX highX lowY highY
   highY = foldr (max . snd) 0 coords
 
 allSurroundingCoords :: [Coord] -> [Coord]
-allSurroundingCoords coords = concat
-  $ map (\y -> map (swap . (,) y) [0 .. xMax b]) [0 .. yMax b]
+allSurroundingCoords coords = concatMap
+  (\y -> map (swap . (,) y) [0 .. xMax b])
+  [0 .. yMax b]
   where b = bounds coords
 
 totalDistance :: [Coord] -> Coord -> Int
