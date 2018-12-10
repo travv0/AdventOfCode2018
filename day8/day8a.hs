@@ -31,25 +31,29 @@ parseNodes :: [Int] -> [Node]
 parseNodes [] = []
 parseNodes (childCount : metadataCount : rest) = parseNodes' childCount
                                                              metadataCount
+                                                             1
                                                              rest
  where
-  parseNodes' :: Int -> Int -> [Int] -> [Node]
-  parseNodes' cc mc xs =
-    let
-      childNodeLength              = lengthOfNode xs
-      nodeLength                   = lengthOfNode $ cc : mc : xs
-      childNode                    = parseNodes xs
-      (nextCc : nextMc : nextRest) = drop childNodeLength xs
-    in
-      [ Node
-          (Header cc mc)
-          (if cc == 0
-            then []
-            else childNode
-              ++ if cc == 1 then [] else parseNodes' nextCc nextMc nextRest
-          )
-          (takeLast mc $ take (nodeLength - headerLength) xs)
-      ]
+  parseNodes' :: Int -> Int -> Int -> [Int] -> [Node]
+  parseNodes' cc mc childCounter xs
+    = let
+        childNodeLength = lengthOfNode xs
+        nodeLength      = lengthOfNode $ cc : mc : xs
+      in
+        [ Node
+            (Header cc mc)
+            (if cc == 0
+              then []
+              else parseNodes' (xs !! 0) (xs !! 1) cc (drop 2 xs)
+            )
+            (takeLast mc $ take (nodeLength - headerLength) xs)
+          ]
+          ++ if childCounter > 1
+               then
+                 let (nextCc : nextMc : nextRest) =
+                       drop (nodeLength - headerLength) xs
+                 in  parseNodes' nextCc nextMc (childCounter - 1) nextRest
+               else []
 parseNodes _ = []
 
 takeLast n = reverse . take n . reverse
@@ -159,3 +163,4 @@ testSumMetadata = do
       inputToInts
         "2 3 0 3 10 11 12 2 1 0 1 99 3 3 0 1 4 1 1 0 1 3 4 3 1 0 1 4 0 1 4 0 1 4 1 4 6 8 2 1 1 2"
   testEq (sumMetadata $ parseNodes ints) 180
+
