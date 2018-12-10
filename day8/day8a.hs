@@ -154,3 +154,8 @@ testSumMetadata = do
   let ints = inputToInts
         "2 3 0 3 10 11 12 2 1 0 1 99 2 3 0 1 4 1 1 0 1 3 4 4 6 8 2 1 1 2"
   testEq (sumMetadata $ parseNodes ints) 167
+  let
+    ints =
+      inputToInts
+        "2 3 0 3 10 11 12 2 1 0 1 99 3 3 0 1 4 1 1 0 1 3 4 3 1 0 1 4 0 1 4 0 1 4 1 4 6 8 2 1 1 2"
+  testEq (sumMetadata $ parseNodes ints) 180
