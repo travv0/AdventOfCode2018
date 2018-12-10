@@ -18,4 +18,4 @@ generateChecksum ids =
 hasTwosAndThrees :: String -> (Bool, Bool)
 hasTwosAndThrees s =
   let counts = map (\c -> length $ filter (== c) s) $ nub s
-  in  (2 `notElem` counts, 3 `notElem` counts)
+  in  (2 `elem` counts, 3 `elem` counts)
