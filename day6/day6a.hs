@@ -1,11 +1,10 @@
-{-# LANGUAGE MultiWayIf #-}
-
 module Main where
 
 import           Data.List
 import           Data.Char
 import           Data.Maybe
 import           Data.Tuple
+import           Control.Monad
 
 type Coord = (Int, Int)
 
@@ -56,9 +55,8 @@ infinitePoints b coords =
     $ boundaryPoints b
 
 boundaryPoints :: Bounds -> [Coord]
-boundaryPoints b = filter (edgePoint b) $ concat $ map
-  (\y -> map (swap . (,) y) [xMin b .. xMax b])
-  [yMin b .. yMax b]
+boundaryPoints b = filter (edgePoint b)
+  $ concatMap (\y -> map (swap . (,) y) [xMin b .. xMax b]) [yMin b .. yMax b]
 
 closestCoord :: [Coord] -> Coord -> Maybe Coord
 closestCoord coords fromCoord =
@@ -73,18 +71,17 @@ closestCoord coords fromCoord =
 
 findMaxClosest :: [Coord] -> Int
 findMaxClosest coords = maximum $ map
-  (\coord ->
-    length $ filter (\c -> isJust c && fromJust c == coord) closestCoords
-  )
+  (\coord -> length $ filter (\c -> c == Just coord) closestCoords)
   finitePoints
  where
   closestCoords = map (closestCoord coords) $ allSurroundingCoords coords
   finitePoints =
-    filter (not . (flip elem) (infinitePoints (bounds coords) coords)) coords
+    filter (not . flip elem (infinitePoints (bounds coords) coords)) coords
 
 allSurroundingCoords :: [Coord] -> [Coord]
-allSurroundingCoords coords = concat
-  $ map (\y -> map (swap . (,) y) [0 .. xMax b]) [0 .. yMax b]
+allSurroundingCoords coords = concatMap
+  (\y -> map (swap . (,) y) [0 .. xMax b])
+  [0 .. yMax b]
   where b = bounds coords
 
 printGrid :: [Coord] -> Int -> Int -> IO ()
@@ -100,10 +97,10 @@ printGrid coords width height = do
             then putStr [fromMaybe '.' $ lookup coord letteredCoords]
             else putStr [toLower $ fromMaybe '.' $ lookup coord letteredCoords]
           Nothing -> putStr "."
-        if i `mod` width == width - 1 then putStr "\n" else return ()
+        when (i `mod` width == width - 1) $ putStr "\n"
       )
     $ zip [0 ..] closestCoords
 
 gridCoords :: Int -> Int -> [Coord]
 gridCoords width height =
-  concat $ map (\y -> map (swap . (,) y) [0 .. width - 1]) [0 .. height - 1]
+  concatMap (\y -> map (swap . (,) y) [0 .. width - 1]) [0 .. height - 1]

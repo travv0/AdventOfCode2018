@@ -7,11 +7,8 @@ findMatch :: [String] -> String
 findMatch ids =
   let idLen = length (head ids)
   in  head $ filter (\s -> length s == idLen - 1)
-                    (concat $ map (getMatchingChars ids) ids)
+                    (concatMap (getMatchingChars ids) ids)
 
 getMatchingChars :: [String] -> String -> [String]
-getMatchingChars ids id = map
-  (\compId ->
-    foldr (\(c1, c2) s -> if c1 == c2 then c1 : s else s) [] $ zip id compId
-  )
-  ids
+getMatchingChars ids i =
+  map (foldr (\(c1, c2) s -> if c1 == c2 then c1 : s else s) [] . zip i) ids
