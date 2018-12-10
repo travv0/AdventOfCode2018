@@ -13,9 +13,9 @@ getFirstRepeatingFrequency' seenFreqs total freqs allFreqs =
       unsignedFreq   = read (tail freq)
       newFreq =
         if freqSign == '-' then total - unsignedFreq else total + unsignedFreq
-  in  case newFreq `elem` seenFreqs of
-        True  -> newFreq
-        False -> getFirstRepeatingFrequency'
+  in  if newFreq `elem` seenFreqs
+        then newFreq
+        else getFirstRepeatingFrequency'
           (newFreq : seenFreqs)
           newFreq
           (if null remainingFreqs then allFreqs else remainingFreqs)
