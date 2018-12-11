@@ -1,6 +1,10 @@
 module Main where
 
+import           Prelude                       as P
+import           Data.Maybe
+import           Data.Foldable
 import           Data.Sequence                 as S
+import           Deque                         as D
 
 type Marble = Int
 
@@ -10,63 +14,48 @@ main = do
   print $ calculateHighScore playerCount $ lastMarble * 100
 
 parseInput :: String -> (Int, Int)
-parseInput s = let w = words s in (read (head w), read (w !! 6))
+parseInput s = let w = words s in (read (P.head w), read (w !! 6))
 
 calculateHighScore :: Int -> Marble -> Int
 calculateHighScore playerCount lastMarble =
   let scores = S.replicate playerCount 0
-  in  maximum $ calculateHighScore' 0 scores (singleton 0) 0 1
+  in  maximum $ calculateHighScore' 0 scores (D.fromList [0]) 1
  where
-  calculateHighScore'
-    :: Int -> Seq Int -> Seq Marble -> Marble -> Marble -> Seq Int
-  calculateHighScore' playerNum scores marbles currentMarble newMarble
+  calculateHighScore' :: Int -> Seq Int -> Deque Marble -> Marble -> Seq Int
+  calculateHighScore' playerNum scores marbles newMarble
     | newMarble > lastMarble
     = scores
     | newMarble `mod` 23 == 0
-    = let (newMarbles, newCurrentMarble) = removeMarble marbles currentMarble
-      in  calculateHighScore'
-            (clockwise playerCount playerNum 1)
-            (addScore marbles currentMarble newMarble scores playerNum)
-            newMarbles
-            newCurrentMarble
-            (newMarble + 1)
+    = let newMarbles = removeMarble marbles
+      in  calculateHighScore' ((playerNum + 1) `mod` playerCount)
+                              (addScore marbles newMarble scores playerNum)
+                              newMarbles
+                              (newMarble + 1)
     | otherwise
-    = calculateHighScore' (clockwise playerCount playerNum 1)
+    = calculateHighScore' ((playerNum + 1) `mod` playerCount)
                           scores
-                          (placeMarble marbles newMarble currentMarble)
-                          newMarble
+                          (placeMarble marbles newMarble)
                           (newMarble + 1)
 
-addScore :: Seq Marble -> Marble -> Marble -> Seq Int -> Int -> Seq Int
-addScore marbles currentMarble newMarble scores playerNum =
+addScore :: Deque Marble -> Marble -> Seq Int -> Int -> Seq Int
+addScore marbles newMarble scores playerNum =
   let score             = index scores playerNum
-      marbleToBeRemoved = case elemIndexL currentMarble marbles of
-        Just i  -> index marbles (counterClockwise (S.length marbles) i 7)
-        Nothing -> 0
+      marbleToBeRemoved = fromMaybe 0 $ D.head (counterClockwise marbles 7)
   in  update playerNum (score + newMarble + marbleToBeRemoved) scores
 
-placeMarble :: Seq Marble -> Marble -> Marble -> Seq Marble
-placeMarble marbles marble currentMarble =
-  case elemIndexL currentMarble marbles of
-    Just i  -> insertAt (clockwise (S.length marbles) i 1 + 1) marble marbles
-    Nothing -> marbles
+placeMarble :: Deque Marble -> Marble -> Deque Marble
+placeMarble marbles marble = cons marble $ clockwise marbles 2
 
-removeMarble :: Seq Marble -> Marble -> (Seq Marble, Marble)
-removeMarble marbles currentMarble =
-  let marblesLength = S.length marbles
-  in  case elemIndexL currentMarble marbles of
-        Just i ->
-          let removeIndex = counterClockwise marblesLength i 7
-          in  ( deleteAt removeIndex marbles
-              , index marbles (clockwise marblesLength removeIndex 1)
-              )
-        Nothing -> (marbles, currentMarble)
+removeMarble :: Deque Marble -> Deque Marble
+removeMarble marbles = case uncons (counterClockwise marbles 7) of
+  Just (_, newMarbles) -> newMarbles
+  Nothing              -> marbles
 
-counterClockwise :: Int -> Int -> Int -> Int
-counterClockwise count i distance = (i + count - distance) `mod` count
+counterClockwise :: Deque a -> Int -> Deque a
+counterClockwise l distance = iterate D.shiftRight l !! distance
 
-clockwise :: Int -> Int -> Int -> Int
-clockwise count i distance = (i + distance) `mod` count
+clockwise :: Deque a -> Int -> Deque a
+clockwise l distance = iterate D.shiftLeft l !! distance
 
 -------------------------------------------------------
 -------- Tests ----------------------------------------
@@ -95,19 +84,28 @@ testCalculateHighScore = do
 
 testPlaceMarble :: IO ()
 testPlaceMarble = do
-  testEq (placeMarble (S.fromList [0]) 1 0)       (S.fromList [0, 1])
-  testEq (placeMarble (S.fromList [0, 1]) 2 1)    (S.fromList [0, 2, 1])
-  testEq (placeMarble (S.fromList [0, 2, 1]) 3 2) (S.fromList [0, 2, 1, 3])
-  testEq (placeMarble (S.fromList [0, 2, 1, 3]) 4 3)
-         (S.fromList [0, 4, 2, 1, 3])
-  testEq (placeMarble (S.fromList [0, 4, 2, 1, 3]) 5 4)
-         (S.fromList [0, 4, 2, 5, 1, 3])
+  testEq (toList $ placeMarble (D.fromList [0]) 1)          [1, 0]
+  testEq (toList $ placeMarble (D.fromList [1, 0]) 2)       [2, 1, 0]
+  testEq (toList $ placeMarble (D.fromList [2, 1, 0]) 3)    [3, 0, 2, 1]
+  testEq (toList $ placeMarble (D.fromList [3, 0, 2, 1]) 4) [4, 2, 1, 3, 0]
+  testEq (toList $ placeMarble (D.fromList [4, 2, 1, 3, 0]) 5)
+         [5, 1, 3, 0, 4, 2]
 
 testRemoveMarble :: IO ()
 testRemoveMarble = testEq
-  (removeMarble
-    (S.fromList
-      [ 0
+  (toList $ removeMarble
+    (D.fromList
+      [ 22
+      , 11
+      , 1
+      , 12
+      , 6
+      , 13
+      , 3
+      , 14
+      , 7
+      , 15
+      , 0
       , 16
       , 8
       , 17
@@ -120,67 +118,72 @@ testRemoveMarble = testEq
       , 10
       , 21
       , 5
-      , 22
-      , 11
-      , 1
-      , 12
-      , 6
-      , 13
-      , 3
-      , 14
-      , 7
-      , 15
       ]
     )
-    22
   )
-  ( S.fromList
-    [ 0
-    , 16
-    , 8
-    , 17
-    , 4
-    , 18
-    , 19
-    , 2
-    , 20
-    , 10
-    , 21
-    , 5
-    , 22
-    , 11
-    , 1
-    , 12
-    , 6
-    , 13
-    , 3
-    , 14
-    , 7
-    , 15
-    ]
-  , 19
-  )
+  [ 19
+  , 2
+  , 20
+  , 10
+  , 21
+  , 5
+  , 22
+  , 11
+  , 1
+  , 12
+  , 6
+  , 13
+  , 3
+  , 14
+  , 7
+  , 15
+  , 0
+  , 16
+  , 8
+  , 17
+  , 4
+  , 18
+  ]
 
 testCounterClockwise :: IO ()
 testCounterClockwise = do
-  testEq (counterClockwise 4 3 1) 2
-  testEq (counterClockwise 4 3 2) 1
-  testEq (counterClockwise 4 3 3) 0
-  testEq (counterClockwise 4 3 4) 3
+  testEq (toList $ counterClockwise (D.fromList [1, 2, 3, 4]) 1)
+         ([4, 1, 2, 3] :: [Marble])
+  testEq (toList $ counterClockwise (D.fromList [1, 2, 3, 4]) 2)
+         ([3, 4, 1, 2] :: [Marble])
+  testEq (toList $ counterClockwise (D.fromList [1, 2, 3, 4]) 3)
+         ([2, 3, 4, 1] :: [Marble])
+  testEq (toList $ counterClockwise (D.fromList [1, 2, 3, 4]) 4)
+         ([1, 2, 3, 4] :: [Marble])
 
 testClockwise :: IO ()
 testClockwise = do
-  testEq (clockwise 4 3 1) 0
-  testEq (clockwise 4 3 2) 1
-  testEq (clockwise 4 3 3) 2
-  testEq (clockwise 4 3 4) 3
+  testEq (toList $ clockwise (D.fromList [1, 2, 3, 4]) 1)
+         ([2, 3, 4, 1] :: [Marble])
+  testEq (toList $ clockwise (D.fromList [1, 2, 3, 4]) 2)
+         ([3, 4, 1, 2] :: [Marble])
+  testEq (toList $ clockwise (D.fromList [1, 2, 3, 4]) 3)
+         ([4, 1, 2, 3] :: [Marble])
+  testEq (toList $ clockwise (D.fromList [1, 2, 3, 4]) 4)
+         ([1, 2, 3, 4] :: [Marble])
+
 
 testAddScore :: IO ()
 testAddScore =
   testEq
       (addScore
-        (S.fromList
-          [ 0
+        (D.fromList
+          [ 22
+          , 11
+          , 1
+          , 12
+          , 6
+          , 13
+          , 3
+          , 14
+          , 7
+          , 15
+          , 0
           , 16
           , 8
           , 17
@@ -193,19 +196,8 @@ testAddScore =
           , 10
           , 21
           , 5
-          , 22
-          , 11
-          , 1
-          , 12
-          , 6
-          , 13
-          , 3
-          , 14
-          , 7
-          , 15
           ]
         )
-        22
         23
         (S.replicate 9 0)
         4
