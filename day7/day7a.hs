@@ -6,7 +6,7 @@ import           Data.Char
 main :: IO ()
 main = do
   graph <- graphFromString <$> getContents
-  print $ naiveTopSort $ sort graph
+  print $ naiveTopSort graph
 
 graphFromString :: String -> [(Char, String)]
 graphFromString string =
@@ -71,7 +71,7 @@ testEq a b = putStrLn $ show a ++ " == " ++ show b ++ ": " ++ show (a == b)
 
 testNaiveTopSort :: IO ()
 testNaiveTopSort = testEq
-  (naiveTopSort $ sort
+  (naiveTopSort
     [('F', "C"), ('A', "C"), ('B', "A"), ('C', ""), ('E', "BDF"), ('D', "A")]
   )
   "CABDFE"
