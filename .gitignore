@@ -352,3 +352,4 @@ ASALocalRun/
 
 tags
 testinput.txt
+*.prof
