@@ -1,18 +1,14 @@
 module Main where
 
-import           Data.Graph
 import           Data.List
 import           Data.Char
-import           Debug.Trace
 
 main :: IO ()
 main = do
-  (graph, vertexToNode, _) <- graphFromString <$> getContents
-  print $ reverse $ map (\v -> let (c, _, _) = vertexToNode v in c) $ topSort
-    graph
+  graph <- graphFromString <$> getContents
+  print $ naiveTopSort $ sort graph
 
-graphFromString
-  :: String -> (Graph, Vertex -> (Char, Char, [Char]), Char -> Maybe Vertex)
+graphFromString :: String -> [(Char, String)]
 graphFromString string =
   let ss      = lines $ trim string
       keyDeps = foldr
@@ -29,17 +25,53 @@ graphFromString string =
         )
         []
         ss
-  in  trace (show $ map (\(k, v) -> (k, k, v)) keyDeps) $ graphFromEdges $ map
-        (\(k, v) -> (k, k, v))
-        keyDeps
+  in  keyDeps
 
 trim :: String -> String
 trim = dropWhileEnd isSpace . dropWhile isSpace
 
 replace :: Eq a => [(a, b)] -> a -> b -> [(a, b)]
 replace list key newValue =
-  let keyIndices = [ y | (y, (k, v)) <- zip [0 :: Int ..] list, k == key ]
-      (front, (_ : back)) = case keyIndices of
+  let keyIndices = [ y | (y, (k, _)) <- zip [0 :: Int ..] list, k == key ]
+      (front, _ : back) = case keyIndices of
         (i : _) -> splitAt i list
         []      -> ([], list)
   in  front ++ ((key, newValue) : back)
+
+naiveTopSort :: [(Char, String)] -> String
+naiveTopSort graph = naiveTopSort' (sort graph) []
+ where
+  naiveTopSort' [] sorted = sorted
+  naiveTopSort' unsortedGraph sorted
+    = let
+        newSorted =
+          sorted
+            ++ [ fst $ foldl'
+                   (\(srtd, found) (c, deps) ->
+                     if not found && null (deps \\ sorted)
+                       then (c, True)
+                       else (srtd, found)
+                   )
+                   (fst $ head unsortedGraph, False)
+                   unsortedGraph
+               ]
+        stillUnsorted = filter (\(c, _) -> c `notElem` newSorted) unsortedGraph
+      in
+        naiveTopSort' stillUnsorted newSorted
+
+-------------------------------------------------------
+-------- Tests ----------------------------------------
+-------------------------------------------------------
+
+tests :: IO ()
+tests = testNaiveTopSort
+
+testEq :: (Eq a, Show a) => a -> a -> IO ()
+testEq a b = putStrLn $ show a ++ " == " ++ show b ++ ": " ++ show (a == b)
+
+testNaiveTopSort :: IO ()
+testNaiveTopSort = testEq
+  (naiveTopSort $ sort
+    [('F', "C"), ('A', "C"), ('B', "A"), ('C', ""), ('E', "BDF"), ('D', "A")]
+  )
+  "CABDFE"
