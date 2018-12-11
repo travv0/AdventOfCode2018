@@ -20,10 +20,10 @@ namespace day10a
 
             while (true)
             {
-                var avgDist = Light.AverageDistanceBetweenLights(lights);
-                var newAvgDist = Light.ShiftLights(lights);
+                var area = Light.AreaOfLights(lights);
+                var newArea = Light.ShiftLights(lights);
 
-                if (avgDist < newAvgDist)
+                if (area.Item1 < newArea.Item1 && area.Item2 < newArea.Item2)
                 {
                     Light.UnshiftLights(lights);
                     break;

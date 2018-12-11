@@ -10,20 +10,17 @@ namespace day10a
         public Position Position { get; set; }
         public Velocity Velocity { get; set; }
 
-        public static double AverageDistanceBetweenLights(List<Light> lights)
+        public static Tuple<int, int> AreaOfLights(List<Light> lights)
         {
-            var total = 0;
-            foreach (var light1 in lights)
-            {
-                foreach (var light2 in lights)
-                {
-                    total += light1.Position.DistanceToPosition(light2.Position);
-                }
-            }
-            return total / Math.Pow(lights.Count, 2);
+            var minX = lights.Min(light => light.Position.X);
+            var minY = lights.Min(light => light.Position.Y);
+            var maxX = lights.Max(light => light.Position.X);
+            var maxY = lights.Max(light => light.Position.Y);
+
+            return new Tuple<int, int>(maxX - minX, maxY - minY);
         }
 
-        public static double ShiftLights(List<Light> lights)
+        public static Tuple<int, int> ShiftLights(List<Light> lights)
         {
             foreach (var light in lights)
             {
@@ -31,7 +28,7 @@ namespace day10a
                 light.Position.Y += light.Velocity.Vertical;
             }
 
-            return AverageDistanceBetweenLights(lights);
+            return AreaOfLights(lights);
         }
 
         public static void UnshiftLights(List<Light> lights)
