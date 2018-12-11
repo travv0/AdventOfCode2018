@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace day10a
+﻿namespace day10
 {
     internal class Velocity
     {

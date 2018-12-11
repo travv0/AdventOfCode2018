@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace day10a
+namespace day10
 {
     internal class Program
     {
@@ -18,6 +17,7 @@ namespace day10a
                 lights.Add(new Light { Position = pos, Velocity = vel });
             }
 
+            int i = 0;
             while (true)
             {
                 var area = Light.AreaOfLights(lights);
@@ -28,9 +28,11 @@ namespace day10a
                     Light.UnshiftLights(lights);
                     break;
                 }
+                i++;
             }
 
             Light.PrintLights(lights);
+            Console.WriteLine($"It would've taken {i} seconds for the message to form.");
         }
 
         private static void ParseFromString(string input, out Position pos, out Velocity vel)
