@@ -1,94 +1,87 @@
 module Main where
 
-import           Prelude                       as P
-import           Control.Applicative           as A
-import           Data.Sequence                 as S
-import           System.IO                     as IO
+import           Control.Applicative            ( liftA2 )
+import           Data.Vector.Unboxed            ( Vector
+                                                , fromList
+                                                , (!)
+                                                )
+import           System.Environment             ( getArgs )
+import           System.IO                      ( hFlush
+                                                , stdout
+                                                )
+import           Control.Parallel.Strategies    ( parMap
+                                                , rdeepseq
+                                                )
 
-type Grid = Seq (Seq Int)
+type Grid = Vector Int
 
 type Cell = (Coord, Coord)
 
 type Coord = Int
 type SerialNum = Int
 
-gridSize :: Int
-gridSize = 300
+problemGridSize :: Int
+problemGridSize = 300
 
 main :: IO ()
 main = do
-  putStr "Enter your puzzle input: "
-  hFlush stdout
-  serialNum <- read <$> getLine
-  print $ foldr
-    (\size currMax@(_, maxPower) ->
-      let ((x, y), squarePower) =
-            findPowerfulSquare gridSize gridSize size size serialNum
-      in  if squarePower > maxPower
-            then ((x, y, size), squarePower)
-            else currMax
-    )
-    ((0, 0, 0), Nothing)
-    [1 .. gridSize]
+  args <- getArgs
+  if "test" `elem` args
+    then tests
+    else do
+      putStr "Enter your puzzle input: "
+      hFlush stdout
+      serialNum <- read <$> getLine
+      let grid = generateGrid problemGridSize serialNum
+      print $ findVarSizePowerfulSquare grid
 
-findPowerfulSquare :: Int -> Int -> Int -> Int -> SerialNum -> (Cell, Maybe Int)
-findPowerfulSquare gridWidth gridHeight squareWidth squareHeight serialNum =
-  let grid = generateGrid gridWidth gridHeight serialNum
-  in  foldr
-          (\cell@(x, y) currMax@(_, maxPower) ->
-            let cellPower = sumSquare grid squareWidth squareHeight x y
-            in  if cellPower > maxPower then (cell, cellPower) else currMax
-          )
-          ((0, 0), Nothing)
-        $ combine [1 .. gridWidth - squareWidth + 1]
-                  [1 .. gridHeight - squareHeight + 1]
+findVarSizePowerfulSquare :: Grid -> (Coord, Coord, Int)
+findVarSizePowerfulSquare grid =
+  fst
+    $ foldr
+        (\(size, ((x, y), power)) currMax@(_, maxPower) ->
+          if power > maxPower then ((x, y, size), power) else currMax
+        )
+        ((0, 0, 0), 0)
+    $ parMap rdeepseq
+             (\size -> (size, findPowerfulSquare grid problemGridSize size))
+             [1 .. problemGridSize]
+
+
+findPowerfulSquare :: Grid -> Int -> Int -> (Cell, Int)
+findPowerfulSquare grid gridSize squareSize =
+  foldr
+      (\cell@(x, y) currMax@(_, maxPower) ->
+        let cellPower = sumSquare grid gridSize squareSize x y
+        in  if cellPower > maxPower then (cell, cellPower) else currMax
+      )
+      ((0, 0), 0)
+    $ combine [1 .. gridSize - squareSize + 1] [1 .. gridSize - squareSize + 1]
 
 powerLevel :: Coord -> Coord -> SerialNum -> Int
 powerLevel x y serialNum =
-  let rackId = x + 10 in digit 3 (((rackId * y) + serialNum) * rackId) - 5
+  let rackId = x + 10
+  in  hundredsPlace (((rackId * y) + serialNum) * rackId) - 5
 
-digit :: (Integral a, Read a) => Int -> a -> a
-digit n x =
-  let rightTrimmed = x `div` read ('1' : P.replicate (n - 1) '0')
-  in  snd $ rightTrimmed `divMod` 10
+hundredsPlace :: (Integral a) => a -> a
+hundredsPlace x =
+  let rightTrimmed = x `quot` 100 in snd $ rightTrimmed `quotRem` 10
 
-generateGrid :: Int -> Int -> SerialNum -> Grid
-generateGrid width height serialNum = S.fromList $ map
-  (\x -> S.fromList $ map (\y -> powerLevel x y serialNum) [1 .. height])
-  [1 .. width]
+generateGrid :: Int -> SerialNum -> Grid
+generateGrid size serialNum = fromList $ map
+  (\i -> powerLevel ((i `rem` size) + 1) ((i `quot` size) + 1) serialNum)
+  [0 .. size * size - 1]
 
-getCellValue :: Grid -> Coord -> Coord -> Maybe Int
-getCellValue grid x y =
-  if x
-       <  1
-       || y
-       <  1
-       || S.length grid
-       <  x
-       || case grid of
-            (h :<| _) -> S.length h
-            _         -> 0
-       <  y
-    then Nothing
-    else S.lookup (x - 1) grid >>= S.lookup (y - 1)
+getCellValue :: Grid -> Int -> Coord -> Coord -> Int
+getCellValue grid size x y = grid ! ((x - 1) + (y - 1) * size)
 
-sumSquare :: Grid -> Int -> Int -> Coord -> Coord -> Maybe Int
-sumSquare grid width height x y =
-  sumMaybe $ map (uncurry (getCellValue grid)) $ combine
-    [x .. x + (width - 1)]
-    [y .. y + (height - 1)]
-
-sumMaybe :: Num a => [Maybe a] -> Maybe a
-sumMaybe = fmap sum . sequence
+sumSquare :: Grid -> Int -> Int -> Coord -> Coord -> Int
+sumSquare grid gridSize squareSize x y = sum $ concatMap
+  (\i -> map (getCellValue grid gridSize i) [y .. y + (squareSize - 1)])
+  [x .. x + (squareSize - 1)]
 
 combine :: [a] -> [b] -> [(a, b)]
 combine = liftA2 (,)
-
--- gridWidth :: Grid -> Int
--- gridWidth = length
-
--- gridHeight :: Grid -> Int
--- gridHeight grid = if null grid then 0 else length $ head grid
 
 -------------------------------------------------------
 -------- Tests ----------------------------------------
@@ -96,21 +89,22 @@ combine = liftA2 (,)
 
 tests :: IO ()
 tests = do
-  testDigit
+  testHundredsPlace
   testPowerLevel
   testGenerateGrid
   testGetCellValue
   testSumSquare
   testFindPowerfulSquare
+  testFindVarSizePowerfulSquare
 
 testEq :: (Eq a, Show a) => a -> a -> IO ()
 testEq a b = putStrLn $ show a ++ " == " ++ show b ++ ": " ++ show (a == b)
 
-testDigit :: IO ()
-testDigit = do
-  testEq (digit 4 5431312) (1 :: Int)
-  testEq (digit 5 547312)  (4 :: Int)
-  testEq (digit 8 1234567) (0 :: Int)
+testHundredsPlace :: IO ()
+testHundredsPlace = do
+  testEq (hundredsPlace 5431312) (3 :: Int)
+  testEq (hundredsPlace 547312)  (3 :: Int)
+  testEq (hundredsPlace 1234567) (5 :: Int)
 
 testPowerLevel :: IO ()
 testPowerLevel = do
@@ -120,30 +114,30 @@ testPowerLevel = do
   testEq (powerLevel 101 153 71) 4
 
 testGenerateGrid :: IO ()
-testGenerateGrid = testEq (generateGrid 3 3 10) $ S.fromList $ map
-  S.fromList
-  [[-3, -2, -1], [-3, -1, 0], [-3, -1, 1]]
+testGenerateGrid =
+  testEq (generateGrid 3 10) $ fromList [-3, -3, -3, -2, -1, -1, -1, 0, 1]
 
 testGetCellValue :: IO ()
 testGetCellValue = do
-  let testGrid = generateGrid 3 5 10
-  testEq (getCellValue testGrid 1 3) $ Just (-1)
-  testEq (getCellValue testGrid 2 3) $ Just 0
-  testEq (getCellValue testGrid 1 1) $ Just (-3)
-  testEq (getCellValue testGrid 4 1) Nothing
-  testEq (getCellValue testGrid 0 1) Nothing
-  testEq (getCellValue testGrid 1 5) $ Just 2
+  let testGrid = generateGrid 3 10
+  testEq (getCellValue testGrid 3 1 3) (-1)
+  testEq (getCellValue testGrid 3 2 3) 0
+  testEq (getCellValue testGrid 3 1 1) (-3)
 
 testSumSquare :: IO ()
 testSumSquare = do
-  let gridGenerator = generateGrid 300 300
-      sumGenerator n = sumSquare (gridGenerator n) 3 3
-  testEq (sumGenerator 18 33 45) $ Just 29
-  testEq (sumGenerator 42 21 61) $ Just 30
-  testEq (sumGenerator 42 299 61) Nothing
+  let sumGenerator n = sumSquare (generateGrid 300 n) 300 3
+  testEq (sumGenerator 18 33 45) 29
+  testEq (sumGenerator 42 21 61) 30
 
 testFindPowerfulSquare :: IO ()
 testFindPowerfulSquare = do
-  let ps = findPowerfulSquare 300 300 3 3
-  testEq (ps 18) ((33, 45), Just 29)
-  testEq (ps 42) ((21, 61), Just 30)
+  let ps n = findPowerfulSquare (generateGrid 300 n) 300 3
+  testEq (ps 18) ((33, 45), 29)
+  testEq (ps 42) ((21, 61), 30)
+
+testFindVarSizePowerfulSquare :: IO ()
+testFindVarSizePowerfulSquare = do
+  let gridGenerator = generateGrid 300
+  testEq (findVarSizePowerfulSquare $ gridGenerator 18) (90 , 269, 16)
+  testEq (findVarSizePowerfulSquare $ gridGenerator 42) (232, 251, 12)
