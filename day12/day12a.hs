@@ -21,13 +21,19 @@ parseNotes s =
 
 runGenerations :: String -> Notes -> Int -> Pots
 runGenerations s notes count =
-  let pots = stringToIntMap 0 s
-  in  IntMap.mapWithKey
-        (\k v -> fromMaybe v $ getNewPlantState notes (getCompareArea k pots))
-        pots
+  let pots = stringToPots 0 s in runGenerations' pots count
+ where
+  runGenerations' pots 0 = pots
+  runGenerations' pots i = runGenerations'
+    (IntMap.fromList $ map
+      (\j -> (j, fromMaybe '.' $ getNewPlantState notes (getCompareArea j pots))
+      )
+      [fst (IntMap.findMin pots) - 2 .. fst (IntMap.findMax pots) + 2]
+    )
+    (i - 1)
 
-stringToIntMap :: Int -> String -> Pots
-stringToIntMap i s = IntMap.fromList $ zip [i ..] s
+stringToPots :: Int -> String -> Pots
+stringToPots i s = IntMap.fromList $ zip [i ..] s
 
 getCompareArea :: Int -> Pots -> String
 getCompareArea i pots =
@@ -76,4 +82,4 @@ testRunGenerations = do
       parseNotes
         "...## => #\n..#.. => #\n.#... => #\n.#.#. => #\n.#.## => #\n.##.. => #\n.#### => #\n#.#.# => #\n#.### => #\n##.#. => #\n##.## => #\n###.. => #\n###.# => #\n####. => #"
   testEq (runGenerations "#..#.#..##......###...###..........." notes 1)
-    $ stringToIntMap 0 "#...#....#.....#..#..#..#..........."
+    $ stringToPots 0 "#...#....#.....#..#..#..#..........."
