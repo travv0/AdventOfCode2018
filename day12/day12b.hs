@@ -7,10 +7,8 @@ import           Data.Char
 import           Data.List.Split                ( chunksOf
                                                 , splitOn
                                                 )
-import           Data.Maybe                     ( fromMaybe )
 import           Numeric                        ( showIntAtBase )
 import           System.Environment             ( getArgs )
-import           Debug.Trace
 
 type Pots = Integer
 type Pot = Integer
@@ -46,20 +44,22 @@ runGenerations notes = runGenerations' 0
   runGenerations' :: Integer -> Pots -> Integer -> (Integer, Pots)
   runGenerations' offset pots 0 = (offset, pots)
   runGenerations' offset pots count =
-    let shft        = countTrailingZeros (fromIntegral pots :: Int) - 2
-        shiftedPots = shiftR pots shft
-    in  runGenerations'
-          (offset + toInteger shft)
-          (foldr
-            (\i p ->
-              if getNewPlantState notes (getCompareArea i shiftedPots) == 1
-                then setBit p i
-                else clearBit p i
-            )
-            shiftedPots
-            [0 .. potCount shiftedPots + 2]
-          )
-          (count - 1)
+    let
+      shft p = countTrailingZeros (fromIntegral p :: Int) - 2
+      shiftedPots = shiftR pots $ shft pots
+      updatedPots = foldr
+        (\i p -> case getNewPlantState notes (getCompareArea i shiftedPots) of
+          Just 1 -> setBit p i
+          _      -> clearBit p i
+        )
+        shiftedPots
+        [0 .. potCount shiftedPots + 2]
+    in
+      if shiftedPots == shiftR updatedPots (shft updatedPots)
+        then (offset + count * toInteger (shft updatedPots), pots)
+        else runGenerations' (offset + toInteger (shft pots))
+                             updatedPots
+                             (count - 1)
 
 potCount :: Pots -> Int
 potCount = (+ 1) . length . takeWhile (> 1) . iterate (`shiftR` 1)
@@ -80,8 +80,8 @@ getCompareArea i pots = maskBits 5 $ shiftR pots (i - 2)
 maskBits :: Int -> Integer -> Integer
 maskBits n bits = bits .&. (shiftL 1 n - 1)
 
-getNewPlantState :: Notes -> Pots -> Pot
-getNewPlantState notes area = notes IntMap.! fromIntegral area
+getNewPlantState :: Notes -> Pots -> Maybe Pot
+getNewPlantState notes area = IntMap.lookup (fromIntegral area) notes
 
 sumPlantNums :: Integer -> Pots -> Integer
 sumPlantNums i =
