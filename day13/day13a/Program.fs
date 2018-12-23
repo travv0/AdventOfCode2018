@@ -94,26 +94,22 @@ let updatePlace (tracks:Place option [][]) y x (place:Place option) : Place opti
         | _ -> Track Intersection |> Some
     | Some (Track (CurvedTrack FSlash)) ->
         match (up, down, left, right) with
-        | (Some (Cart (Down, td, _)), _, Some (Track _), _) -> Cart (Left, td, CurvedTrack FSlash) |> Some
-        | (_, Some (Cart (Up, td, _)), _, Some (Track _)) -> Cart (Right, td, CurvedTrack FSlash) |> Some
-        | (Some (Track _), _, Some (Cart (Right, td, _)), _) -> Cart (Up, td, CurvedTrack FSlash) |> Some
-        | (_, Some (Track _), _, Some (Cart (Left, td, _))) -> Cart (Down, td, CurvedTrack FSlash) |> Some
-        | (Some (Track _), _, _, _)
-        | (_, Some (Track _), _, _)
-        | (_, _, Some (Track _), _)
-        | (_, _, _, Some (Track _)) -> Track (CurvedTrack FSlash) |> Some
-        | _ -> Collision |> Some
+        | (Some (Cart (Down, _, _)), _, Some (Cart (Right, _, _)), _)
+        | (_, Some (Cart (Up, _, _)), _, Some (Cart (Left, _, _))) -> Collision |> Some
+        | (Some (Cart (Down, td, _)), _, _, _) -> Cart (Left, td, CurvedTrack FSlash) |> Some
+        | (_, Some (Cart (Up, td, _)), _, _) -> Cart (Right, td, CurvedTrack FSlash) |> Some
+        | (_, _, Some (Cart (Right, td, _)), _) -> Cart (Up, td, CurvedTrack FSlash) |> Some
+        | (_, _, _, Some (Cart (Left, td, _))) -> Cart (Down, td, CurvedTrack FSlash) |> Some
+        | _ -> Track (CurvedTrack FSlash) |> Some
     | Some (Track (CurvedTrack BSlash)) ->
         match (up, down, left, right) with
-        | (Some (Cart (Down, td, _)), _, _, Some (Track _)) -> Cart (Right, td, CurvedTrack BSlash) |> Some
-        | (_, Some (Cart (Up, td, _)), Some (Track _), _) -> Cart (Left, td, CurvedTrack BSlash) |> Some
-        | (_, Some (Track _), Some (Cart (Right, td, _)), _) -> Cart (Down, td, CurvedTrack BSlash) |> Some
-        | (Some (Track _), _, _, Some (Cart (Left, td, _))) -> Cart (Up, td, CurvedTrack BSlash) |> Some
-        | (Some (Track _), _, _, _)
-        | (_, Some (Track _), _, _)
-        | (_, _, Some (Track _), _)
-        | (_, _, _, Some (Track _)) -> Track (CurvedTrack BSlash) |> Some
-        | _ -> Collision |> Some
+        | (Some (Cart (Down, _, _)), _, _, Some (Cart (Left, _, _)))
+        | (_, Some (Cart (Up, _, _)), Some (Cart (Right, _, _)), _) -> Collision |> Some
+        | (Some (Cart (Down, td, _)), _, _, _) -> Cart (Right, td, CurvedTrack BSlash) |> Some
+        | (_, Some (Cart (Up, td, _)), _, _) -> Cart (Left, td, CurvedTrack BSlash) |> Some
+        | (_, _, Some (Cart (Right, td, _)), _) -> Cart (Down, td, CurvedTrack BSlash) |> Some
+        | (_, _, _, Some (Cart (Left, td, _))) -> Cart (Up, td, CurvedTrack BSlash) |> Some
+        | _ -> Track (CurvedTrack BSlash) |> Some
     | _ -> place
 
 let updateRow (tracks:Place option [][]) y row =
