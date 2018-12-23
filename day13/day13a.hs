@@ -5,6 +5,8 @@ import qualified Data.Vector                   as V
 
 data Direction = U | R | D | L
   deriving (Eq, Show)
+data TurnDirection = TurnLeft | GoStraight | TurnRight
+  deriving (Eq, Show)
 
 data StraightTrack = Vertical | Horizontal
   deriving (Eq, Show)
@@ -15,7 +17,8 @@ data Track = StraightTrack StraightTrack
            | Intersection
   deriving (Eq, Show)
 
-data Place = Track Track | Cart Direction Track
+type TrackBeneath = Track
+data Place = Track Track | Cart Direction TurnDirection TrackBeneath
   deriving (Eq, Show)
 
 main :: IO ()
@@ -30,8 +33,8 @@ charToPlace '|'  = Just $ Track $ StraightTrack Vertical
 charToPlace '\\' = Just $ Track $ CurvedTrack BSlash
 charToPlace '/'  = Just $ Track $ CurvedTrack FSlash
 charToPlace '+'  = Just $ Track Intersection
-charToPlace '^'  = Just $ Cart U $ StraightTrack Vertical
-charToPlace '>'  = Just $ Cart R $ StraightTrack Horizontal
-charToPlace 'v'  = Just $ Cart D $ StraightTrack Vertical
-charToPlace '<'  = Just $ Cart L $ StraightTrack Horizontal
+charToPlace '^'  = Just $ Cart U TurnLeft $ StraightTrack Vertical
+charToPlace '>'  = Just $ Cart R TurnLeft $ StraightTrack Horizontal
+charToPlace 'v'  = Just $ Cart D TurnLeft $ StraightTrack Vertical
+charToPlace '<'  = Just $ Cart L TurnLeft $ StraightTrack Horizontal
 charToPlace _    = Nothing
