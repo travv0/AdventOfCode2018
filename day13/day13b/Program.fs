@@ -75,7 +75,6 @@ let printTracks tracks =
 
 let updatePlace (tracks:Place option [][]) y x (place:Place option) : unit =
     match place with
-    | Some (Track _) -> ()
     | Some (Cart (Left, td, t, false)) ->
         match tracks.[y].[x-1] with
         | Some (Cart (_, _, t, _)) -> tracks.[y].[x-1] <- Some (Track t)
