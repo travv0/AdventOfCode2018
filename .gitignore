@@ -355,3 +355,5 @@ testinput.txt
 *.prof
 
 launchSettings.json
+
+target/
