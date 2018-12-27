@@ -1,0 +1,8 @@
+[package]
+name = "day14a"
+version = "0.1.0"
+authors = ["Travis Sunderland <travis@sunderland.io>"]
+edition = "2018"
+
+[dependencies]
+num-integer = "0.1.36"
