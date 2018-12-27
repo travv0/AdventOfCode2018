@@ -1,19 +1,40 @@
 use num_integer::div_rem;
 
-pub fn get_next_ten_scores(input: usize) -> Vec<u8> {
+pub fn get_score_count_before(input: &str) -> usize {
+    let digits: Vec<u8> = input
+        .chars()
+        .map(|c| c.to_digit(10).expect("Couldn't convert char to digit") as u8)
+        .collect();
+    let digits_len = digits.len();
     let mut scores = vec![3, 7];
     let mut elf1 = 0;
     let mut elf2 = 1;
 
-    while scores.len() < input + 10 {
+    let mut at_end = false;
+    let mut at_shifted_end = false;
+
+    while !at_end && !at_shifted_end {
         add_new_scores(elf1, elf2, &mut scores);
 
         let (new_elf1, new_elf2) = get_new_elfs(elf1, elf2, &scores);
         elf1 = new_elf1;
         elf2 = new_elf2;
+
+        let scores_len = scores.len();
+        if scores_len > digits_len {
+            at_end = scores[scores.len() - digits_len..].to_vec() == digits;
+        }
+        if scores_len > digits_len + 1 {
+            at_shifted_end =
+                scores[scores.len() - 1 - digits_len..scores.len() - 1].to_vec() == digits;
+        }
     }
 
-    scores[input..input + 10].to_vec()
+    if at_end {
+        scores.len() - digits_len
+    } else {
+        scores.len() - digits_len - 1
+    }
 }
 
 fn add_new_scores(elf1: usize, elf2: usize, scores: &mut Vec<u8>) {
@@ -38,14 +59,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_get_next_ten_scores() {
-        assert_eq!(get_next_ten_scores(9), vec![5, 1, 5, 8, 9, 1, 6, 7, 7, 9]);
-        assert_eq!(get_next_ten_scores(5), vec![0, 1, 2, 4, 5, 1, 5, 8, 9, 1]);
-        assert_eq!(get_next_ten_scores(18), vec![9, 2, 5, 1, 0, 7, 1, 0, 8, 5]);
-        assert_eq!(
-            get_next_ten_scores(2018),
-            vec![5, 9, 4, 1, 4, 2, 9, 8, 8, 2]
-        );
+    fn test_get_score_count_before() {
+        assert_eq!(get_score_count_before("51589"), 9);
+        assert_eq!(get_score_count_before("01245"), 5);
+        assert_eq!(get_score_count_before("92510"), 18);
+        assert_eq!(get_score_count_before("59414"), 2018);
     }
 
     #[test]
