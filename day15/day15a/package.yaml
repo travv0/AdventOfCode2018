@@ -23,6 +23,9 @@ dependencies:
 - base >= 4.7 && < 5
 - vector
 - mtl
+- unordered-containers
+- hashable
+- astar
 
 library:
   source-dirs: src
