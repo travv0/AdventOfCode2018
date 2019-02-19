@@ -1,3 +1,4 @@
+import           Control.Monad.Reader
 import           Control.Monad.State
 import           Test.Hspec
 import qualified Data.HashSet                  as H
@@ -28,27 +29,24 @@ main = hspec $ do
     $          it "correctly parses input into cells"
     $          parseInput "#.GE#\n##.G#"
     `shouldBe` V.fromList
-                 [ V.fromList
-                   [ Cell Wall   (0, 0)
-                   , Cell Cavern (1, 0)
-                   , Cell Goblin (2, 0)
-                   , Cell Elf    (3, 0)
-                   , Cell Wall   (4, 0)
-                   ]
-                 , V.fromList
-                   [ Cell Wall   (0, 1)
-                   , Cell Wall   (1, 1)
-                   , Cell Cavern (2, 1)
-                   , Cell Goblin (3, 1)
-                   , Cell Wall   (4, 1)
-                   ]
+                 [ Cell Wall   (0, 0)
+                 , Cell Cavern (1, 0)
+                 , Cell Goblin (2, 0)
+                 , Cell Elf    (3, 0)
+                 , Cell Wall   (4, 0)
+                 , Cell Wall   (0, 1)
+                 , Cell Wall   (1, 1)
+                 , Cell Cavern (2, 1)
+                 , Cell Goblin (3, 1)
+                 , Cell Wall   (4, 1)
                  ]
 
   describe "neighbors"
-    $ it "returns correct neighbors in correct order"
-    $ evalState (neighbors (Cell Cavern (1, 0))) (parseInput "#.GE#\n##.G#")
-    `shouldBe` H.fromList
-                 [Cell Wall (0, 0), Cell Goblin (2, 0), Cell Wall (1, 1)]
+    $          it "returns correct neighbors in correct order"
+    $          runReader
+                 (neighbors (Cell Cavern (1, 0)))
+                 (BattleState {_mapWidth = 5, _battleMap = parseInput "#..E#\n#..G#"})
+    `shouldBe` H.fromList [Cell Cavern (2, 0), Cell Cavern (1, 1)]
 
   describe "distance"
     $ it "correctly calculates the manhattan distance between two points"
