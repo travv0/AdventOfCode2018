@@ -77,3 +77,47 @@ main = hspec $ do
                &  ix 10
                .~ Cell (Unit Elf 200 True) (3, 1)
                )
+
+  describe "runTurn" $ do
+    it "correctly updates state in one turn based on examples"
+      $ let initialMap =
+              parseInput
+                $  "#########\n"
+                ++ "#G..G..G#\n"
+                ++ "#.......#\n"
+                ++ "#.......#\n"
+                ++ "#G..E..G#\n"
+                ++ "#.......#\n"
+                ++ "#.......#\n"
+                ++ "#G..G..G#\n"
+                ++ "#########"
+            round1Map =
+              V.map markAsMoved
+                $  parseInput
+                $  "#########\n"
+                ++ "#.G...G.#\n"
+                ++ "#...G...#\n"
+                ++ "#...E..G#\n"
+                ++ "#.G.....#\n"
+                ++ "#.......#\n"
+                ++ "#G..G..G#\n"
+                ++ "#.......#\n"
+                ++ "#########"
+        in  execState
+                runTurn
+                (BattleState
+                  { _battleRound = 0
+                  , _mapWidth    = 9
+                  , _battleMap   = initialMap
+                  }
+                )
+              `shouldBe` (BattleState
+                           { _battleRound = 1
+                           , _mapWidth    = 9
+                           , _battleMap   = round1Map
+                           }
+                         )
+
+markAsMoved :: Cell -> Cell
+markAsMoved (Cell (Unit u h _) p) = Cell (Unit u h True) p
+markAsMoved c                     = c
