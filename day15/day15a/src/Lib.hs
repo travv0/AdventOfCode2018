@@ -1,10 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module Lib
-  ( runGame
-  )
-where
+module Lib where
 
 import           Control.Monad.State
 import           Data.HashSet                   ( HashSet )
@@ -35,17 +32,17 @@ runGame = undefined
 
 parseInput :: String -> Map
 parseInput =
-  V.fromList . mapi (\y -> V.fromList . mapi (`charToEntity` y)) . lines
+  V.fromList . mapi (\y -> V.fromList . mapi (`charToCell` y)) . lines
 
 mapi :: (Int -> a -> b) -> [a] -> [b]
 mapi f = zipWith f [0 ..]
 
-charToEntity :: Int -> Int -> Char -> Cell
-charToEntity x y '#' = Cell Wall (x, y)
-charToEntity x y '.' = Cell Cavern (x, y)
-charToEntity x y 'G' = Cell Goblin (x, y)
-charToEntity x y 'E' = Cell Elf (x, y)
-charToEntity _ _ _   = error "Invalid character in input string"
+charToCell :: Int -> Int -> Char -> Cell
+charToCell x y '#' = Cell Wall (x, y)
+charToCell x y '.' = Cell Cavern (x, y)
+charToCell x y 'G' = Cell Goblin (x, y)
+charToCell x y 'E' = Cell Elf (x, y)
+charToCell _ _ _   = error "Invalid character in input string"
 
 neighbors :: (MonadState Map m) => Cell -> m (HashSet Cell)
 neighbors (Cell _ (x, y)) = do
