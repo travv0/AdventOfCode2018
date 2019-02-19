@@ -4,8 +4,15 @@
 
 module Lib where
 
-import           Control.Lens
-import           Control.Monad.State
+import           Control.Lens                   ( (.=)
+                                                , (^.)
+                                                , ix
+                                                , makeLenses
+                                                )
+import           Control.Monad.State            ( execState
+                                                , get
+                                                , MonadState
+                                                )
 import           Data.Graph.AStar               ( aStarM )
 import           Data.HashSet                   ( HashSet )
 import           Data.Hashable
@@ -13,17 +20,20 @@ import           Data.Maybe                     ( catMaybes )
 import           Data.Vector                    ( Vector
                                                 , (!?)
                                                 )
-import           GHC.Generics
+import           GHC.Generics                   ( Generic )
 import qualified Data.HashSet                  as H
 import qualified Data.Vector                   as V
 
 data Cell = Cell Entity Pos
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Generic, Ord)
 
 type Pos = (Int, Int)
 
-data Entity = Wall | Cavern | Goblin Health | Elf Health
-  deriving (Eq, Show, Generic)
+data Entity = Wall | Cavern | Unit UnitType Health Bool
+  deriving (Eq, Show, Generic, Ord)
+
+data UnitType = Goblin | Elf
+  deriving (Eq, Show, Generic, Ord)
 
 type Health = Int
 
@@ -38,6 +48,7 @@ data BattleState = BattleState
   } deriving (Eq, Show, Generic)
 makeLenses ''BattleState
 
+instance Hashable UnitType
 instance Hashable Entity
 instance Hashable Cell
 
@@ -54,7 +65,6 @@ runGame s =
   in  do
         let finalState = flip execState battleState runTurn
         calculateResult finalState
-
 
 calculateResult = undefined
 
@@ -79,8 +89,8 @@ mapi f = zipWith f [0 ..]
 charToCell :: Int -> Int -> Char -> Cell
 charToCell x y '#' = Cell Wall (x, y)
 charToCell x y '.' = Cell Cavern (x, y)
-charToCell x y 'G' = Cell (Goblin initialHealth) (x, y)
-charToCell x y 'E' = Cell (Elf initialHealth) (x, y)
+charToCell x y 'G' = Cell (Unit Goblin initialHealth False) (x, y)
+charToCell x y 'E' = Cell (Unit Elf initialHealth False) (x, y)
 charToCell _ _ _   = error "Invalid character in input string"
 
 neighbors :: (MonadState BattleState m) => Cell -> m (HashSet Cell)
@@ -93,10 +103,36 @@ isCavern :: Cell -> Bool
 isCavern (Cell Cavern _) = True
 isCavern _               = False
 
+getIndex :: (MonadState BattleState m) => Int -> Int -> m Int
+getIndex x y = do
+  state <- get
+  return $ x + y * (state ^. mapWidth)
+
 getCell :: (MonadState BattleState m) => Int -> Int -> m (Maybe Cell)
 getCell x y = do
-  m <- get
-  return $ (m ^. battleMap) !? (x + y * (m ^. mapWidth))
+  state <- get
+  index <- getIndex x y
+  return $ (state ^. battleMap) !? index
 
 distance :: Cell -> Cell -> Int
 distance (Cell _ (x1, y1)) (Cell _ (x2, y2)) = abs (x2 - x1) + abs (y2 - y1)
+
+distanceM c1 c2 = do
+  let r = distance c1 c2
+  return r
+
+moveUnit :: (MonadState BattleState m) => Cell -> Cell -> m ()
+moveUnit unit dest = do
+  nextMove <- fmap head <$> aStarM neighbors
+                                   distanceM
+                                   (return . distance dest)
+                                   (return . (==) dest)
+                                   (return unit)
+  case nextMove of
+    Just (Cell Cavern (x, y)) -> do
+      let (Cell (Unit u h _) (oldX, oldY)) = unit
+      newIndex <- getIndex x y
+      oldIndex <- getIndex oldX oldY
+      battleMap . ix newIndex .= Cell (Unit u h True) (x, y)
+      battleMap . ix oldIndex .= Cell Cavern (x, y)
+    _ -> return ()
