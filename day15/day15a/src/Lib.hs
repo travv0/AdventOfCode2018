@@ -25,7 +25,11 @@ import qualified Data.HashSet                  as H
 import qualified Data.Vector                   as V
 
 data Cell = Cell Entity Pos
-  deriving (Eq, Show, Generic, Ord)
+  deriving (Eq, Show, Generic)
+
+instance Ord Cell where
+  (Cell _ (x1, y1)) `compare` (Cell _ (x2, y2)) =
+    y1 `compare` y2 <> x1 `compare` x2
 
 type Pos = (Int, Int)
 
@@ -61,7 +65,11 @@ attackPower = 3
 runGame :: String -> Integer
 runGame s =
   let width       = (length . head . lines) s
-      battleState = BattleState {_mapWidth = width, _battleMap = parseInput s}
+      battleState = BattleState
+        { _mapWidth    = width
+        , _battleMap   = parseInput s
+        , _battleRound = 0
+        }
   in  do
         let finalState = flip execState battleState runTurn
         calculateResult finalState
@@ -124,10 +132,12 @@ distanceM c1 c2 = do
 
 moveUnit :: (MonadState BattleState m) => Cell -> Cell -> m ()
 moveUnit unit dest = do
+  destNeighbors <- H.toList <$> neighbors dest
+  let closestNeighbor = foldr1 closerNeighbor destNeighbors
   nextMove <- fmap head <$> aStarM neighbors
                                    distanceM
                                    (distanceM dest)
-                                   (return . (==) dest)
+                                   (return . (==) closestNeighbor)
                                    (return unit)
   case nextMove of
     Just (Cell Cavern (x, y)) -> do
@@ -135,5 +145,6 @@ moveUnit unit dest = do
       newIndex <- getIndex x y
       oldIndex <- getIndex oldX oldY
       battleMap . ix newIndex .= Cell (Unit u h True) (x, y)
-      battleMap . ix oldIndex .= Cell Cavern (x, y)
+      battleMap . ix oldIndex .= Cell Cavern (oldX, oldY)
     _ -> return ()
+  where closerNeighbor n c = if distance unit n < distance unit c then n else c
