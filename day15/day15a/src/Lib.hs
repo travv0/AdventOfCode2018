@@ -7,11 +7,12 @@ module Lib
 where
 
 import           Control.Monad.State
-import           Control.Monad.State.Class
 import           Data.HashSet                   ( HashSet )
 import           Data.Hashable
 import           Data.Maybe                     ( catMaybes )
-import           Data.Vector                    ( Vector, (!?) )
+import           Data.Vector                    ( Vector
+                                                , (!?)
+                                                )
 import           GHC.Generics
 import qualified Data.HashSet                  as H
 import qualified Data.Vector                   as V

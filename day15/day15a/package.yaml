@@ -51,3 +51,5 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - day15a
+    - hspec
+    - hspec-expectations
