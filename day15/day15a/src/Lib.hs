@@ -133,18 +133,23 @@ distanceM c1 c2 = do
 moveUnit :: (MonadState BattleState m) => Cell -> Cell -> m ()
 moveUnit unit dest = do
   destNeighbors <- H.toList <$> neighbors dest
-  let closestNeighbor = foldr1 closerNeighbor destNeighbors
-  nextMove <- fmap head <$> aStarM neighbors
-                                   distanceM
-                                   (distanceM dest)
-                                   (return . (==) closestNeighbor)
-                                   (return unit)
-  case nextMove of
-    Just (Cell Cavern (x, y)) -> do
-      let (Cell (Unit u h _) (oldX, oldY)) = unit
-      newIndex <- getIndex x y
-      oldIndex <- getIndex oldX oldY
-      battleMap . ix newIndex .= Cell (Unit u h True) (x, y)
-      battleMap . ix oldIndex .= Cell Cavern (oldX, oldY)
-    _ -> return ()
+  let mclosestNeighbor = if null destNeighbors
+        then Nothing
+        else Just (foldr1 closerNeighbor destNeighbors)
+  case mclosestNeighbor of
+    Just closestNeighbor -> do
+      nextMove <- fmap head <$> aStarM neighbors
+                                       distanceM
+                                       (distanceM dest)
+                                       (return . (==) closestNeighbor)
+                                       (return unit)
+      case nextMove of
+        Just (Cell Cavern (x, y)) -> do
+          let (Cell (Unit u h _) (oldX, oldY)) = unit
+          newIndex <- getIndex x y
+          oldIndex <- getIndex oldX oldY
+          battleMap . ix newIndex .= Cell (Unit u h True) (x, y)
+          battleMap . ix oldIndex .= Cell Cavern (oldX, oldY)
+        _ -> return ()
+    Nothing -> return ()
   where closerNeighbor n c = if distance unit n < distance unit c then n else c
