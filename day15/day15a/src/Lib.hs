@@ -117,6 +117,7 @@ getCell x y = do
 distance :: Cell -> Cell -> Int
 distance (Cell _ (x1, y1)) (Cell _ (x2, y2)) = abs (x2 - x1) + abs (y2 - y1)
 
+distanceM :: Monad m => Cell -> Cell -> m Int
 distanceM c1 c2 = do
   let r = distance c1 c2
   return r
@@ -125,7 +126,7 @@ moveUnit :: (MonadState BattleState m) => Cell -> Cell -> m ()
 moveUnit unit dest = do
   nextMove <- fmap head <$> aStarM neighbors
                                    distanceM
-                                   (return . distance dest)
+                                   (distanceM dest)
                                    (return . (==) dest)
                                    (return unit)
   case nextMove of
