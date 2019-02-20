@@ -8,23 +8,6 @@ import           Lib
 
 main :: IO ()
 main = hspec $ do
-  describe "runGame" $ it "works with given test cases" $ do
-    runGame "#######\n#G..#E#\n#E#E.E#\n#G.##.#\n#...#E#\n#...E.#\n#######"
-      `shouldBe` 36334
-
-    runGame "#######\n#E..EG#\n#.#G.E#\n#E.##E#\nEG..#.#\n#..E#.#\n#######"
-      `shouldBe` 39514
-
-    runGame "#######\n#E.G#.#\n#.#G..#\n#G.#.G#\n#G..#.#\n#...E.#\n#######"
-      `shouldBe` 27755
-
-    runGame "#######\n#.E...#\n#.#..G#\n#.###.#\n#E#G#G#\n#...#G#\n#######"
-      `shouldBe` 28944
-
-    runGame
-        "#########\n#G......#\n#.E.#...#\n#..##..G#\n#...##..#\n#...#...#\n#.G...G.#\n#.....G.#\n#########"
-      `shouldBe` 18740
-
   describe "parseInput"
     $          it "correctly parses input into cells"
     $          parseInput "#.GE#\n##.G#"
@@ -51,7 +34,8 @@ main = hspec $ do
                    , _battleRound = 0
                    }
                  )
-    `shouldBe` H.fromList [Cell Cavern (2, 0), Cell Cavern (1, 1)]
+    `shouldBe` H.fromList
+                 [Cell Wall (0, 0), Cell Cavern (2, 0), Cell Cavern (1, 1)]
 
   describe "distance"
     $ it "correctly calculates the manhattan distance between two points"
@@ -78,46 +62,126 @@ main = hspec $ do
                .~ Cell (Unit Elf 200 True) (3, 1)
                )
 
-  describe "runTurn" $ do
-    it "correctly updates state in one turn based on examples"
-      $ let initialMap =
-              parseInput
-                $  "#########\n"
-                ++ "#G..G..G#\n"
-                ++ "#.......#\n"
-                ++ "#.......#\n"
-                ++ "#G..E..G#\n"
-                ++ "#.......#\n"
-                ++ "#.......#\n"
-                ++ "#G..G..G#\n"
-                ++ "#########"
-            round1Map =
-              V.map markAsMoved
-                $  parseInput
-                $  "#########\n"
-                ++ "#.G...G.#\n"
-                ++ "#...G...#\n"
-                ++ "#...E..G#\n"
-                ++ "#.G.....#\n"
-                ++ "#.......#\n"
-                ++ "#G..G..G#\n"
-                ++ "#.......#\n"
-                ++ "#########"
-        in  execState
-                runTurn
-                (BattleState
-                  { _battleRound = 0
-                  , _mapWidth    = 9
-                  , _battleMap   = initialMap
-                  }
-                )
-              `shouldBe` (BattleState
-                           { _battleRound = 1
-                           , _mapWidth    = 9
-                           , _battleMap   = round1Map
-                           }
-                         )
+  describe "runTurn"
+    $ it "correctly updates state in one turn based on examples"
+    $ let initialMap =
+            parseInput
+              $  "#########\n"
+              ++ "#G..G..G#\n"
+              ++ "#.......#\n"
+              ++ "#.......#\n"
+              ++ "#G..E..G#\n"
+              ++ "#.......#\n"
+              ++ "#.......#\n"
+              ++ "#G..G..G#\n"
+              ++ "#########"
+          round1Map =
+            parseInput
+              $  "#########\n"
+              ++ "#.G...G.#\n"
+              ++ "#...G...#\n"
+              ++ "#...E..G#\n"
+              ++ "#.G.....#\n"
+              ++ "#.......#\n"
+              ++ "#G..G..G#\n"
+              ++ "#.......#\n"
+              ++ "#########"
+      in  execState
+              runTurn
+              (BattleState
+                { _battleRound = 0
+                , _mapWidth    = 9
+                , _battleMap   = initialMap
+                }
+              )
+            `shouldBe` (BattleState
+                         { _battleRound = 1
+                         , _mapWidth    = 9
+                         , _battleMap   = round1Map
+                         }
+                       )
 
-markAsMoved :: Cell -> Cell
-markAsMoved (Cell (Unit u h _) p) = Cell (Unit u h True) p
-markAsMoved c                     = c
+  describe "attack" $ do
+    it "attacks weakest neighbor enemy unit" $ do
+      let initialState = BattleState
+            { _battleRound = 0
+            , _mapWidth    = 2
+            , _battleMap   = V.fromList
+              [ Cell Cavern                 (0, 0)
+              , Cell (Unit Goblin 200 True) (1, 0)
+              , Cell (Unit Goblin 180 True) (0, 1)
+              , Cell (Unit Elf 200 True)    (1, 1)
+              ]
+            }
+      execState (attack (Cell (Unit Elf 200 True) (1, 1))) initialState
+        `shouldBe` (BattleState
+                     { _battleRound = 0
+                     , _mapWidth    = 2
+                     , _battleMap   = V.fromList
+                       [ Cell Cavern                 (0, 0)
+                       , Cell (Unit Goblin 200 True) (1, 0)
+                       , Cell (Unit Goblin 177 True) (0, 1)
+                       , Cell (Unit Elf 200 True)    (1, 1)
+                       ]
+                     }
+                   )
+
+    it "kills off (removes) unit with 0 or less health" $ do
+      let initialState = BattleState
+            { _battleRound = 0
+            , _mapWidth    = 2
+            , _battleMap   = V.fromList
+              [ Cell Cavern                 (0, 0)
+              , Cell (Unit Goblin 3 True)   (1, 0)
+              , Cell (Unit Goblin 180 True) (0, 1)
+              , Cell (Unit Elf 200 True)    (1, 1)
+              ]
+            }
+      execState (attack (Cell (Unit Elf 200 True) (1, 1))) initialState
+        `shouldBe` (BattleState
+                     { _battleRound = 0
+                     , _mapWidth    = 2
+                     , _battleMap   = V.fromList
+                       [ Cell Cavern                 (0, 0)
+                       , Cell Cavern                 (1, 0)
+                       , Cell (Unit Goblin 180 True) (0, 1)
+                       , Cell (Unit Elf 200 True)    (1, 1)
+                       ]
+                     }
+                   )
+
+  describe "calculateResult"
+    $          it "calculates correctly"
+    $          calculateResult BattleState
+                 { _battleRound = 12
+                 , _mapWidth    = 3
+                 , _battleMap   = V.fromList
+                   [ Cell Cavern                 (0, 0)
+                   , Cell Cavern                 (1, 0)
+                   , Cell (Unit Goblin 180 True) (0, 1)
+                   , Cell (Unit Elf 200 True)    (1, 1)
+                   ]
+                 }
+    `shouldBe` 4560
+
+  describe "startGame"
+    $ it "works with given test cases"
+    $ do
+    -- startGame "#######\n#G..#E#\n#E#E.E#\n#G.##.#\n#...#E#\n#...E.#\n#######"
+    --   `shouldBe` 36334
+
+        startGame
+            "#######\n#E..EG#\n#.#G.E#\n#E.##E#\nEG..#.#\n#..E#.#\n#######"
+          `shouldBe` 39514
+
+        startGame
+            "#######\n#E.G#.#\n#.#G..#\n#G.#.G#\n#G..#.#\n#...E.#\n#######"
+          `shouldBe` 27755
+
+        startGame
+            "#######\n#.E...#\n#.#..G#\n#.###.#\n#E#G#G#\n#...#G#\n#######"
+          `shouldBe` 28944
+
+        startGame
+            "#########\n#G......#\n#.E.#...#\n#..##..G#\n#...##..#\n#...#...#\n#.G...G.#\n#.....G.#\n#########"
+          `shouldBe` 18740

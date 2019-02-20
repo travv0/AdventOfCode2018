@@ -3,4 +3,4 @@ module Main where
 import           Lib
 
 main :: IO ()
-main = interact (show . runGame)
+main = interact (show . startGame)
