@@ -43,63 +43,228 @@ main = hspec $ do
     `shouldBe` 11
 
   describe "moveUnit"
-    $          it "correctly moves units per advent of code examples"
-    $          _battleMap
-                 (execState
-                   (moveUnit (Cell (Unit Elf 200 False) (2, 1))
-                             (Cell (Unit Goblin 200 False) (4, 3))
-                   )
-                   (BattleState
-                     { _battleRound = 0
-                     , _mapWidth    = 7
-                     , _battleMap   = parseInput
-                       "#######\n#.E...#\n#.....#\n#...G.#\n#######"
-                     }
-                   )
-                 )
-    `shouldBe` (  parseInput "#######\n#..E..#\n#.....#\n#...G.#\n#######"
-               &  ix 10
-               .~ Cell (Unit Elf 200 True) (3, 1)
-               )
+    $ it "correctly moves units per advent of code examples"
+    $ do
+        _battleMap
+            (execState
+              (do
+                targets <- getSortedTargets (Cell (Unit Elf 200 False) (2, 1))
+                moveUnit (Cell (Unit Elf 200 False) (2, 1)) targets
+              )
+              BattleState
+                { _battleRound = 0
+                , _mapWidth    = 7
+                , _battleMap   = parseInput
+                  $  "#######\n"
+                  ++ "#.E...#\n"
+                  ++ "#.....#\n"
+                  ++ "#...G.#\n"
+                  ++ "#######"
+                }
+            )
+          `shouldBe` parseInput
+                       (  "#######\n"
+                       ++ "#..E..#\n"
+                       ++ "#.....#\n"
+                       ++ "#...G.#\n"
+                       ++ "#######"
+                       )
+
+        _battleMap
+            (execState
+              (do
+                targets <- getSortedTargets (Cell (Unit Elf 200 False) (1, 1))
+                moveUnit (Cell (Unit Elf 200 False) (1, 1)) targets
+              )
+              BattleState
+                { _battleRound = 0
+                , _mapWidth    = 7
+                , _battleMap   = parseInput
+                  $  "#######\n"
+                  ++ "#E..G.#\n"
+                  ++ "#...#.#\n"
+                  ++ "#.G.#G#\n"
+                  ++ "#######"
+                }
+            )
+          `shouldBe` parseInput
+                       (  "#######\n"
+                       ++ "#.E.G.#\n"
+                       ++ "#...#.#\n"
+                       ++ "#.G.#G#\n"
+                       ++ "#######"
+                       )
+
+        _battleMap
+            (execState
+              (do
+                targets <- getSortedTargets (Cell (Unit Elf 200 False) (1, 1))
+                moveUnit (Cell (Unit Elf 200 False) (1, 1)) targets
+              )
+              BattleState
+                { _battleRound = 0
+                , _mapWidth    = 7
+                , _battleMap   = parseInput
+                  $  "#######\n"
+                  ++ "#E..#G#\n"
+                  ++ "#...#.#\n"
+                  ++ "#...#G#\n"
+                  ++ "#######"
+                }
+            )
+          `shouldBe` parseInput
+                       (  "#######\n"
+                       ++ "#E..#G#\n"
+                       ++ "#...#.#\n"
+                       ++ "#...#G#\n"
+                       ++ "#######"
+                       )
+
+        _battleMap
+            (execState
+              (do
+                targets <- getSortedTargets (Cell (Unit Elf 200 False) (1, 1))
+                moveUnit (Cell (Unit Elf 200 False) (1, 1)) targets
+              )
+              BattleState
+                { _battleRound = 0
+                , _mapWidth    = 7
+                , _battleMap   = parseInput
+                  $  "#######\n"
+                  ++ "#EG.#G#\n"
+                  ++ "#...#.#\n"
+                  ++ "#...#G#\n"
+                  ++ "#######"
+                }
+            )
+          `shouldBe` parseInput
+                       (  "#######\n"
+                       ++ "#EG.#G#\n"
+                       ++ "#...#.#\n"
+                       ++ "#...#G#\n"
+                       ++ "#######"
+                       )
 
   describe "runTurn"
     $ it "correctly updates state in one turn based on examples"
-    $ let initialMap =
-            parseInput
-              $  "#########\n"
-              ++ "#G..G..G#\n"
-              ++ "#.......#\n"
-              ++ "#.......#\n"
-              ++ "#G..E..G#\n"
-              ++ "#.......#\n"
-              ++ "#.......#\n"
-              ++ "#G..G..G#\n"
-              ++ "#########"
-          round1Map =
-            parseInput
-              $  "#########\n"
-              ++ "#.G...G.#\n"
-              ++ "#...G...#\n"
-              ++ "#...E..G#\n"
-              ++ "#.G.....#\n"
-              ++ "#.......#\n"
-              ++ "#G..G..G#\n"
-              ++ "#.......#\n"
-              ++ "#########"
-      in  execState
-              runTurn
-              (BattleState
-                { _battleRound = 0
-                , _mapWidth    = 9
-                , _battleMap   = initialMap
-                }
+    $ let
+        initialMap =
+          parseInput
+            $  "#########\n"
+            ++ "#G..G..G#\n"
+            ++ "#.......#\n"
+            ++ "#.......#\n"
+            ++ "#G..E..G#\n"
+            ++ "#.......#\n"
+            ++ "#.......#\n"
+            ++ "#G..G..G#\n"
+            ++ "#########"
+        round1Map =
+          parseInput
+            $  "#########\n"
+            ++ "#.G...G.#\n"
+            ++ "#...G...#\n"
+            ++ "#...E..G#\n"
+            ++ "#.G.....#\n"
+            ++ "#.......#\n"
+            ++ "#G..G..G#\n"
+            ++ "#.......#\n"
+            ++ "#########"
+        round2Map =
+          parseInput
+            $  "#########\n"
+            ++ "#..G.G..#\n"
+            ++ "#...G...#\n"
+            ++ "#.G.E.G.#\n"
+            ++ "#.......#\n"
+            ++ "#G..G..G#\n"
+            ++ "#.......#\n"
+            ++ "#.......#\n"
+            ++ "#########"
+        round3Map =
+          parseInput
+            $  "#########\n"
+            ++ "#.......#\n"
+            ++ "#..GGG..#\n"
+            ++ "#..GEG..#\n"
+            ++ "#G..G...#\n"
+            ++ "#......G#\n"
+            ++ "#.......#\n"
+            ++ "#.......#\n"
+            ++ "#########"
+      in
+        do
+          showMap
+              9
+              (_battleMap
+                (execState
+                  runTurn
+                  (BattleState
+                    { _battleRound = 0
+                    , _mapWidth    = 9
+                    , _battleMap   = initialMap
+                    }
+                  )
+                )
               )
-            `shouldBe` (BattleState
-                         { _battleRound = 1
-                         , _mapWidth    = 9
-                         , _battleMap   = round1Map
-                         }
-                       )
+            `shouldBe` showMap
+                         9
+                         (_battleMap
+                           (BattleState
+                             { _battleRound = 1
+                             , _mapWidth    = 9
+                             , _battleMap   = round1Map
+                             }
+                           )
+                         )
+
+          showMap
+              9
+              (_battleMap
+                (execState
+                  runTurn
+                  (BattleState
+                    { _battleRound = 1
+                    , _mapWidth    = 9
+                    , _battleMap   = round1Map
+                    }
+                  )
+                )
+              )
+            `shouldBe` showMap
+                         9
+                         (_battleMap
+                           (BattleState
+                             { _battleRound = 2
+                             , _mapWidth    = 9
+                             , _battleMap   = round2Map
+                             }
+                           )
+                         )
+
+          showMap
+              9
+              (_battleMap
+                (execState
+                  runTurn
+                  (BattleState
+                    { _battleRound = 2
+                    , _mapWidth    = 9
+                    , _battleMap   = round2Map
+                    }
+                  )
+                )
+              )
+            `shouldBe` showMap
+                         9
+                         (_battleMap
+                           (BattleState
+                             { _battleRound = 3
+                             , _mapWidth    = 9
+                             , _battleMap   = round3Map
+                             }
+                           )
+                         )
 
   describe "attack" $ do
     it "attacks weakest neighbor enemy unit" $ do
@@ -164,24 +329,19 @@ main = hspec $ do
                  }
     `shouldBe` 4560
 
-  describe "startGame"
-    $ it "works with given test cases"
-    $ do
+  describe "startGame" $ it "works with given test cases" $ do
     -- startGame "#######\n#G..#E#\n#E#E.E#\n#G.##.#\n#...#E#\n#...E.#\n#######"
     --   `shouldBe` 36334
 
-        startGame
-            "#######\n#E..EG#\n#.#G.E#\n#E.##E#\nEG..#.#\n#..E#.#\n#######"
-          `shouldBe` 39514
+    -- startGame "#######\n#E..EG#\n#.#G.E#\n#E.##E#\nEG..#.#\n#..E#.#\n#######"
+    --   `shouldBe` 39514
 
-        startGame
-            "#######\n#E.G#.#\n#.#G..#\n#G.#.G#\n#G..#.#\n#...E.#\n#######"
-          `shouldBe` 27755
+    startGame "#######\n#E.G#.#\n#.#G..#\n#G.#.G#\n#G..#.#\n#...E.#\n#######"
+      `shouldBe` 27755
 
-        startGame
-            "#######\n#.E...#\n#.#..G#\n#.###.#\n#E#G#G#\n#...#G#\n#######"
-          `shouldBe` 28944
+    startGame "#######\n#.E...#\n#.#..G#\n#.###.#\n#E#G#G#\n#...#G#\n#######"
+      `shouldBe` 28944
 
-        startGame
-            "#########\n#G......#\n#.E.#...#\n#..##..G#\n#...##..#\n#...#...#\n#.G...G.#\n#.....G.#\n#########"
-          `shouldBe` 18740
+    startGame
+        "#########\n#G......#\n#.E.#...#\n#..##..G#\n#...##..#\n#...#...#\n#.G...G.#\n#.....G.#\n#########"
+      `shouldBe` 18740

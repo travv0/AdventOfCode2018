@@ -9,7 +9,6 @@ import           Control.Monad
 import           Control.Monad.State            ( execState
                                                 , get
                                                 , MonadState
-                                                , unless
                                                 )
 import           Data.Graph.AStar               ( aStarM )
 import           Data.HashSet                   ( HashSet )
@@ -81,9 +80,8 @@ startGame s =
         , _battleMap   = parseInput s
         , _battleRound = 0
         }
-  in  do
-        let finalState = execState runGame battleState
-        trace (show finalState) calculateResult finalState
+      finalState = execState runGame battleState
+  in  calculateResult finalState
 
 runGame :: (MonadState BattleState m) => m ()
 runGame = do
@@ -93,13 +91,8 @@ runGame = do
     Finished   -> return ()
 
 calculateResult :: BattleState -> Int
-calculateResult state =
-  trace
-      (show (state ^. battleRound) ++ " " ++ show
-        (V.foldr accumHealth 0 (state ^. battleMap))
-      )
-      (state ^. battleRound)
-    * V.foldr accumHealth 0 (state ^. battleMap)
+calculateResult state = (state ^. battleRound)
+  * V.foldr accumHealth 0 (state ^. battleMap)
  where
   accumHealth (Cell (Unit _ h _) _) a = a + h
   accumHealth _                     a = a
@@ -109,32 +102,40 @@ runTurn = do
   mcurrentUnit <- findNextUnit
   case mcurrentUnit of
     Just currentUnit -> do
-      mclosestTarget <- getClosestTarget currentUnit
-      case mclosestTarget of
-        Just target -> do
-          moveUnit currentUnit target
-          attack currentUnit
+      targets <- getSortedTargets currentUnit
+      case targets of
+        [] -> do
+          state <- get
+          trace (showMap (state ^. mapWidth) (state ^. battleMap))
+                return
+                Finished
+        _ -> do
+          newUnit@(Cell _ (x, y)) <- moveUnit currentUnit targets
+          attack newUnit
+          newIndex <- getIndex x y
+          battleMap . ix newIndex %= markMoved
           runTurn
-        Nothing -> return Finished
     Nothing -> do
       battleRound += 1
       battleMap %= resetMovedAll
-      return StillGoing
+      state <- get
+      trace (showMap (state ^. mapWidth) (state ^. battleMap)) return StillGoing
 
 resetMovedAll :: Vector Cell -> Vector Cell
 resetMovedAll = V.map resetMoved
 
 resetMoved :: Cell -> Cell
-resetMoved (Cell (Unit u h _) p) = Cell (Unit u h False) p
-resetMoved c                     = c
+resetMoved cell = cell & cellEntity . _Unit . _3 .~ False
 
-getClosestTarget :: (MonadState BattleState m) => Cell -> m (Maybe Cell)
-getClosestTarget orig = do
+markMoved :: Cell -> Cell
+markMoved cell = cell & cellEntity . _Unit . _3 .~ True
+
+getSortedTargets :: (MonadState BattleState m) => Cell -> m [Cell]
+getSortedTargets orig = do
   possibleTargets <- getPossibleTargets orig
-  if null possibleTargets
-    then return Nothing
-    else return $ Just $ foldr1 closerTarget possibleTargets
-  where closerTarget c n = if distance orig n < distance orig c then n else c
+  return $ sortBy (compDistance orig) $ V.toList possibleTargets
+
+compDistance orig c1 c2 = distance orig c1 `compare` distance orig c2
 
 getPossibleTargets :: (MonadState BattleState m) => Cell -> m (Vector Cell)
 getPossibleTargets (Cell (Unit Elf _ _) _) = do
@@ -154,6 +155,12 @@ getPossibleTargets (Cell (Unit Goblin _ _) _) = do
     )
     (state ^. battleMap)
 getPossibleTargets _ = error "No targets for non-units"
+
+showMap :: Int -> Map -> String
+showMap width m =
+  concat
+    $ mapi (\i c -> (if i `mod` width == 0 then "\n" else "") ++ [cellToChar c])
+    $ V.toList m
 
 findNextUnit :: (MonadState BattleState m) => m (Maybe Cell)
 findNextUnit = do
@@ -179,6 +186,12 @@ charToCell x y '.' = Cell Cavern (x, y)
 charToCell x y 'G' = Cell (Unit Goblin initialHealth False) (x, y)
 charToCell x y 'E' = Cell (Unit Elf initialHealth False) (x, y)
 charToCell _ _ _   = error "Invalid character in input string"
+
+cellToChar :: Cell -> Char
+cellToChar (Cell Wall              _) = '#'
+cellToChar (Cell Cavern            _) = '.'
+cellToChar (Cell (Unit Goblin _ _) _) = 'G'
+cellToChar (Cell (Unit Elf    _ _) _) = 'E'
 
 neighbors :: (MonadState BattleState m) => Cell -> m (HashSet Cell)
 neighbors (Cell _ (x, y)) = do
@@ -223,30 +236,35 @@ distanceM c1 c2 = do
   let r = distance c1 c2
   return r
 
-moveUnit :: (MonadState BattleState m) => Cell -> Cell -> m ()
-moveUnit unit@(Cell _ (origX, origY)) dest = unless (isNeighbor unit dest) $ do
-  destNeighbors <- H.toList <$> neighbors dest
-  let mclosestNeighbor = if null destNeighbors
-        then Nothing
-        else Just (foldl1' closerNeighbor destNeighbors)
-  case mclosestNeighbor of
-    Just closestNeighbor -> do
-      nextMove <- fmap head <$> aStarM cavernNeighbors
-                                       distanceM
-                                       (distanceM dest)
-                                       (return . (==) closestNeighbor)
-                                       (return unit)
-      case nextMove of
-        Just (Cell Cavern (x, y)) -> do
-          let (Cell (Unit u h _) (oldX, oldY)) = unit
-          newIndex <- getIndex x y
-          oldIndex <- getIndex oldX oldY
-          battleMap . ix newIndex .= Cell (Unit u h True) (x, y)
-          battleMap . ix oldIndex .= Cell Cavern (oldX, oldY)
-        _ -> do
-          i <- getIndex origX origY
-          battleMap . ix i . cellEntity . _Unit . _3 .= True
-    Nothing -> return ()
+moveUnit :: (MonadState BattleState m) => Cell -> [Cell] -> m Cell
+moveUnit unit []      = return unit
+moveUnit unit targets = if any (isNeighbor unit) targets
+  then return unit
+  else do
+    possibleDests' <- mapM cavernNeighbors targets
+    let possibleDests = concatMap H.toList possibleDests'
+    let mclosestDest = if null possibleDests
+          then Nothing
+          else Just (foldl1' closerNeighbor $ sort possibleDests)
+    case mclosestDest of
+      Just closestDest -> do
+        moves <- aStarM cavernNeighbors
+                        distanceM
+                        (distanceM closestDest)
+                        (return . (==) closestDest)
+                        (return unit)
+        let nextMove = trace (show moves) head <$> moves
+        case nextMove of
+          Just (Cell Cavern (x, y)) -> do
+            let (Cell u (oldX, oldY)) = unit
+            newIndex <- getIndex x y
+            oldIndex <- getIndex oldX oldY
+            let newUnit = Cell u (x, y)
+            battleMap . ix newIndex .= newUnit
+            battleMap . ix oldIndex .= Cell Cavern (oldX, oldY)
+            return newUnit
+          _ -> moveUnit unit $ tail targets
+      Nothing -> moveUnit unit $ tail targets
   where closerNeighbor c n = if distance unit n < distance unit c then n else c
 
 attack :: (MonadState BattleState m) => Cell -> m ()
