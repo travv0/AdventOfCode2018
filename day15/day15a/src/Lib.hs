@@ -35,7 +35,10 @@ instance Ord Cell where
 
 type Pos = (Int, Int)
 
-data Entity = Wall | Cavern | Unit
+data Entity = Wall | Cavern | Unit UnitAttr
+   deriving (Eq, Show, Generic, Ord)
+
+data UnitAttr = UnitAttr
   { _unitType :: UnitType
   , _unitHealth :: Health
   , _unitHasMoved :: Bool
@@ -57,12 +60,14 @@ data BattleState = BattleState
   } deriving (Eq, Show, Generic)
 
 makeLenses ''Entity
+makeLenses ''UnitAttr
 makeLenses ''Cell
 makeLenses ''BattleState
 
 makePrisms ''Entity
 
 instance Hashable UnitType
+instance Hashable UnitAttr
 instance Hashable Entity
 instance Hashable Cell
 
@@ -94,8 +99,8 @@ calculateResult :: BattleState -> Int
 calculateResult state = (state ^. battleRound)
   * V.foldr accumHealth 0 (state ^. battleMap)
  where
-  accumHealth (Cell (Unit _ h _) _) a = a + h
-  accumHealth _                     a = a
+  accumHealth (Cell (Unit (UnitAttr _ h _)) _) a = a + h
+  accumHealth _ a = a
 
 runTurn :: (MonadState BattleState m) => m Status
 runTurn = do
@@ -125,33 +130,32 @@ resetMovedAll :: Vector Cell -> Vector Cell
 resetMovedAll = V.map resetMoved
 
 resetMoved :: Cell -> Cell
-resetMoved cell = cell & cellEntity . _Unit . _3 .~ False
+resetMoved cell = cell & cellEntity . _Unit . unitHasMoved .~ False
 
 markMoved :: Cell -> Cell
-markMoved cell = cell & cellEntity . _Unit . _3 .~ True
+markMoved cell = cell & cellEntity . _Unit . unitHasMoved .~ True
 
 getSortedTargets :: (MonadState BattleState m) => Cell -> m [Cell]
 getSortedTargets orig = do
   possibleTargets <- getPossibleTargets orig
-  return $ sortBy (compDistance orig) $ V.toList possibleTargets
-
-compDistance orig c1 c2 = distance orig c1 `compare` distance orig c2
+  return $ sortBy compDistance $ V.toList possibleTargets
+  where compDistance c1 c2 = distance orig c1 `compare` distance orig c2
 
 getPossibleTargets :: (MonadState BattleState m) => Cell -> m (Vector Cell)
-getPossibleTargets (Cell (Unit Elf _ _) _) = do
+getPossibleTargets (Cell (Unit (UnitAttr Elf _ _)) _) = do
   state <- get
   return $ V.filter
     (\(Cell ent _) -> case ent of
-      Unit Goblin _ _ -> True
-      _               -> False
+      Unit (UnitAttr Goblin _ _) -> True
+      _                          -> False
     )
     (state ^. battleMap)
-getPossibleTargets (Cell (Unit Goblin _ _) _) = do
+getPossibleTargets (Cell (Unit (UnitAttr Goblin _ _)) _) = do
   state <- get
   return $ V.filter
     (\(Cell ent _) -> case ent of
-      Unit Elf _ _ -> True
-      _            -> False
+      Unit (UnitAttr Elf _ _) -> True
+      _                       -> False
     )
     (state ^. battleMap)
 getPossibleTargets _ = error "No targets for non-units"
@@ -168,8 +172,8 @@ findNextUnit = do
   return
     $  V.find
          (\(Cell ent _) -> case ent of
-           Unit _ _ False -> True
-           _              -> False
+           Unit (UnitAttr _ _ False) -> True
+           _                         -> False
          )
     $  state
     ^. battleMap
@@ -183,15 +187,15 @@ mapi f = zipWith f [0 ..]
 charToCell :: Int -> Int -> Char -> Cell
 charToCell x y '#' = Cell Wall (x, y)
 charToCell x y '.' = Cell Cavern (x, y)
-charToCell x y 'G' = Cell (Unit Goblin initialHealth False) (x, y)
-charToCell x y 'E' = Cell (Unit Elf initialHealth False) (x, y)
+charToCell x y 'G' = Cell (Unit (UnitAttr Goblin initialHealth False)) (x, y)
+charToCell x y 'E' = Cell (Unit (UnitAttr Elf initialHealth False)) (x, y)
 charToCell _ _ _   = error "Invalid character in input string"
 
 cellToChar :: Cell -> Char
-cellToChar (Cell Wall              _) = '#'
-cellToChar (Cell Cavern            _) = '.'
-cellToChar (Cell (Unit Goblin _ _) _) = 'G'
-cellToChar (Cell (Unit Elf    _ _) _) = 'E'
+cellToChar (Cell Wall                         _) = '#'
+cellToChar (Cell Cavern                       _) = '.'
+cellToChar (Cell (Unit (UnitAttr Goblin _ _)) _) = 'G'
+cellToChar (Cell (Unit (UnitAttr Elf    _ _)) _) = 'E'
 
 neighbors :: (MonadState BattleState m) => Cell -> m (HashSet Cell)
 neighbors (Cell _ (x, y)) = do
@@ -268,21 +272,25 @@ moveUnit unit targets = if any (isNeighbor unit) targets
   where closerNeighbor c n = if distance unit n < distance unit c then n else c
 
 attack :: (MonadState BattleState m) => Cell -> m ()
-attack c@(Cell (Unit uType _ _) _) = do
+attack c@(Cell (Unit (UnitAttr uType _ _)) _) = do
   ns <- filter isUnit . H.toList <$> neighbors c
   let
-    enemies       = filter (\(Cell (Unit nType _ _) _) -> uType /= nType) ns
+    enemies =
+      filter (\(Cell (Unit (UnitAttr nType _ _)) _) -> uType /= nType) ns
     sortedEnemies = sortBy
-      (\(Cell (Unit _ h1 _) _) (Cell (Unit _ h2 _) _) -> h1 `compare` h2)
+      (\(Cell (Unit (UnitAttr _ h1 _)) _) (Cell (Unit (UnitAttr _ h2 _)) _) ->
+        h1 `compare` h2
+      )
       enemies
     menemy = if null sortedEnemies then Nothing else Just (head sortedEnemies)
   case menemy of
     Just (Cell Unit{} (x, y)) -> do
       enemyIndex <- getIndex x y
-      battleMap . ix enemyIndex . cellEntity . _Unit . _2 -= attackPower
+      battleMap . ix enemyIndex . cellEntity . _Unit . unitHealth -= attackPower
       state <- get
       when
-          (  (state ^? battleMap . ix enemyIndex . cellEntity . _Unit . _2)
+          ((state ^? battleMap . ix enemyIndex . cellEntity . _Unit . unitHealth
+           )
           <= Just 0
           )
         $  battleMap

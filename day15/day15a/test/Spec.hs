@@ -1,4 +1,3 @@
-import           Control.Lens
 import           Control.Monad.State
 import           Test.Hspec
 import qualified Data.HashSet                  as H
@@ -12,16 +11,16 @@ main = hspec $ do
     $          it "correctly parses input into cells"
     $          parseInput "#.GE#\n##.G#"
     `shouldBe` V.fromList
-                 [ Cell Wall                    (0, 0)
-                 , Cell Cavern                  (1, 0)
-                 , Cell (Unit Goblin 200 False) (2, 0)
-                 , Cell (Unit Elf 200 False)    (3, 0)
-                 , Cell Wall                    (4, 0)
-                 , Cell Wall                    (0, 1)
-                 , Cell Wall                    (1, 1)
-                 , Cell Cavern                  (2, 1)
-                 , Cell (Unit Goblin 200 False) (3, 1)
-                 , Cell Wall                    (4, 1)
+                 [ Cell Wall                               (0, 0)
+                 , Cell Cavern                             (1, 0)
+                 , Cell (Unit (UnitAttr Goblin 200 False)) (2, 0)
+                 , Cell (Unit (UnitAttr Elf 200 False))    (3, 0)
+                 , Cell Wall                               (4, 0)
+                 , Cell Wall                               (0, 1)
+                 , Cell Wall                               (1, 1)
+                 , Cell Cavern                             (2, 1)
+                 , Cell (Unit (UnitAttr Goblin 200 False)) (3, 1)
+                 , Cell Wall                               (4, 1)
                  ]
 
   describe "neighbors"
@@ -48,8 +47,9 @@ main = hspec $ do
         _battleMap
             (execState
               (do
-                targets <- getSortedTargets (Cell (Unit Elf 200 False) (2, 1))
-                moveUnit (Cell (Unit Elf 200 False) (2, 1)) targets
+                targets <- getSortedTargets
+                  (Cell (Unit (UnitAttr Elf 200 False)) (2, 1))
+                moveUnit (Cell (Unit (UnitAttr Elf 200 False)) (2, 1)) targets
               )
               BattleState
                 { _battleRound = 0
@@ -73,8 +73,9 @@ main = hspec $ do
         _battleMap
             (execState
               (do
-                targets <- getSortedTargets (Cell (Unit Elf 200 False) (1, 1))
-                moveUnit (Cell (Unit Elf 200 False) (1, 1)) targets
+                targets <- getSortedTargets
+                  (Cell (Unit (UnitAttr Elf 200 False)) (1, 1))
+                moveUnit (Cell (Unit (UnitAttr Elf 200 False)) (1, 1)) targets
               )
               BattleState
                 { _battleRound = 0
@@ -98,8 +99,9 @@ main = hspec $ do
         _battleMap
             (execState
               (do
-                targets <- getSortedTargets (Cell (Unit Elf 200 False) (1, 1))
-                moveUnit (Cell (Unit Elf 200 False) (1, 1)) targets
+                targets <- getSortedTargets
+                  (Cell (Unit (UnitAttr Elf 200 False)) (1, 1))
+                moveUnit (Cell (Unit (UnitAttr Elf 200 False)) (1, 1)) targets
               )
               BattleState
                 { _battleRound = 0
@@ -123,8 +125,9 @@ main = hspec $ do
         _battleMap
             (execState
               (do
-                targets <- getSortedTargets (Cell (Unit Elf 200 False) (1, 1))
-                moveUnit (Cell (Unit Elf 200 False) (1, 1)) targets
+                targets <- getSortedTargets
+                  (Cell (Unit (UnitAttr Elf 200 False)) (1, 1))
+                moveUnit (Cell (Unit (UnitAttr Elf 200 False)) (1, 1)) targets
               )
               BattleState
                 { _battleRound = 0
@@ -272,21 +275,22 @@ main = hspec $ do
             { _battleRound = 0
             , _mapWidth    = 2
             , _battleMap   = V.fromList
-              [ Cell Cavern                 (0, 0)
-              , Cell (Unit Goblin 200 True) (1, 0)
-              , Cell (Unit Goblin 180 True) (0, 1)
-              , Cell (Unit Elf 200 True)    (1, 1)
+              [ Cell Cavern                            (0, 0)
+              , Cell (Unit (UnitAttr Goblin 200 True)) (1, 0)
+              , Cell (Unit (UnitAttr Goblin 180 True)) (0, 1)
+              , Cell (Unit (UnitAttr Elf 200 True))    (1, 1)
               ]
             }
-      execState (attack (Cell (Unit Elf 200 True) (1, 1))) initialState
+      execState (attack (Cell (Unit (UnitAttr Elf 200 True)) (1, 1)))
+                initialState
         `shouldBe` (BattleState
                      { _battleRound = 0
                      , _mapWidth    = 2
                      , _battleMap   = V.fromList
-                       [ Cell Cavern                 (0, 0)
-                       , Cell (Unit Goblin 200 True) (1, 0)
-                       , Cell (Unit Goblin 177 True) (0, 1)
-                       , Cell (Unit Elf 200 True)    (1, 1)
+                       [ Cell Cavern                            (0, 0)
+                       , Cell (Unit (UnitAttr Goblin 200 True)) (1, 0)
+                       , Cell (Unit (UnitAttr Goblin 177 True)) (0, 1)
+                       , Cell (Unit (UnitAttr Elf 200 True))    (1, 1)
                        ]
                      }
                    )
@@ -296,21 +300,22 @@ main = hspec $ do
             { _battleRound = 0
             , _mapWidth    = 2
             , _battleMap   = V.fromList
-              [ Cell Cavern                 (0, 0)
-              , Cell (Unit Goblin 3 True)   (1, 0)
-              , Cell (Unit Goblin 180 True) (0, 1)
-              , Cell (Unit Elf 200 True)    (1, 1)
+              [ Cell Cavern                            (0, 0)
+              , Cell (Unit (UnitAttr Goblin 3 True))   (1, 0)
+              , Cell (Unit (UnitAttr Goblin 180 True)) (0, 1)
+              , Cell (Unit (UnitAttr Elf 200 True))    (1, 1)
               ]
             }
-      execState (attack (Cell (Unit Elf 200 True) (1, 1))) initialState
+      execState (attack (Cell (Unit (UnitAttr Elf 200 True)) (1, 1)))
+                initialState
         `shouldBe` (BattleState
                      { _battleRound = 0
                      , _mapWidth    = 2
                      , _battleMap   = V.fromList
-                       [ Cell Cavern                 (0, 0)
-                       , Cell Cavern                 (1, 0)
-                       , Cell (Unit Goblin 180 True) (0, 1)
-                       , Cell (Unit Elf 200 True)    (1, 1)
+                       [ Cell Cavern                            (0, 0)
+                       , Cell Cavern                            (1, 0)
+                       , Cell (Unit (UnitAttr Goblin 180 True)) (0, 1)
+                       , Cell (Unit (UnitAttr Elf 200 True))    (1, 1)
                        ]
                      }
                    )
@@ -321,20 +326,20 @@ main = hspec $ do
                  { _battleRound = 12
                  , _mapWidth    = 3
                  , _battleMap   = V.fromList
-                   [ Cell Cavern                 (0, 0)
-                   , Cell Cavern                 (1, 0)
-                   , Cell (Unit Goblin 180 True) (0, 1)
-                   , Cell (Unit Elf 200 True)    (1, 1)
+                   [ Cell Cavern                            (0, 0)
+                   , Cell Cavern                            (1, 0)
+                   , Cell (Unit (UnitAttr Goblin 180 True)) (0, 1)
+                   , Cell (Unit (UnitAttr Elf 200 True))    (1, 1)
                    ]
                  }
     `shouldBe` 4560
 
   describe "startGame" $ it "works with given test cases" $ do
-    -- startGame "#######\n#G..#E#\n#E#E.E#\n#G.##.#\n#...#E#\n#...E.#\n#######"
-    --   `shouldBe` 36334
+    startGame "#######\n#G..#E#\n#E#E.E#\n#G.##.#\n#...#E#\n#...E.#\n#######"
+      `shouldBe` 36334
 
-    -- startGame "#######\n#E..EG#\n#.#G.E#\n#E.##E#\nEG..#.#\n#..E#.#\n#######"
-    --   `shouldBe` 39514
+    startGame "#######\n#E..EG#\n#.#G.E#\n#E.##E#\nEG..#.#\n#..E#.#\n#######"
+      `shouldBe` 39514
 
     startGame "#######\n#E.G#.#\n#.#G..#\n#G.#.G#\n#G..#.#\n#...E.#\n#######"
       `shouldBe` 27755
