@@ -1,8 +1,0 @@
-[package]
-name = "day14b"
-version = "0.1.0"
-authors = ["Travis <tssund93@gmail.com>"]
-edition = "2018"
-
-[dependencies]
-num-integer = "0.1.36"
