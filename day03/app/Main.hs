@@ -4,5 +4,7 @@ import Lib
 
 main :: IO ()
 main = do
-    claims <- parseInput <$> readFile "input.txt"
-    putStrLn $ "Part 1: " <> show (countOverlappingClaims claims)
+    (claims, ids) <- parseInput <$> readFile "input.txt"
+    let (overlappingClaims, nonOverlappingId) = countOverlappingClaims claims ids
+    putStrLn $ "Part 1: " <> show overlappingClaims
+    putStrLn $ "Part 2: " <> show nonOverlappingId
