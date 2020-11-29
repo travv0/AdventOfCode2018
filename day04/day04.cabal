@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 97de8d21c36d0a0b2f9dc59b71f3dea7268d895512c42184ac0756f06340e894
+-- hash: bf2d066f88f9825f59429a19e888d44e814b07c7f07f7c0da683b76997b0d122
 
 name:           day04
 version:        0.1.0.0
@@ -46,22 +46,6 @@ executable day04-exe
   hs-source-dirs:
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
-  build-depends:
-      base >=4.7 && <5
-    , containers
-    , day04
-    , lens
-    , regex-tdfa
-  default-language: Haskell2010
-
-test-suite day04-test
-  type: exitcode-stdio-1.0
-  main-is: Spec.hs
-  other-modules:
-      Paths_day04
-  hs-source-dirs:
-      test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers

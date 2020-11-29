@@ -1,6 +1,6 @@
 module Lib where
 
-import Control.Lens (At (at), non, (%~), (&))
+import Control.Lens (at, non, (%~), (&))
 import Data.IntMap (IntMap)
 import qualified Data.IntMap as IntMap
 import Data.List (isInfixOf, sort)
@@ -34,7 +34,12 @@ countSleep entries =
                             Nothing
                             $ foldr
                                 ( \time' counts' ->
-                                    counts' & at (fromJust guardId) . non IntMap.empty . at time' . non 0 %~ (+ 1)
+                                    counts'
+                                        & at (fromJust guardId)
+                                            . non IntMap.empty
+                                            . at time'
+                                            . non 0
+                                        %~ succ
                                 )
                                 counts
                                 [fromJust sleepStartTime .. read time - 1]
@@ -51,13 +56,26 @@ mostMinutesId =
             )
             (0, 0)
 
-mostMinutesTime :: IntMap Int -> Int
+mostMinutesTime :: IntMap Int -> (Int, Int)
 mostMinutesTime =
-    fst
-        . IntMap.foldrWithKey
-            ( \time sleep acc@(_, maxSleep) ->
-                if maxSleep < sleep
-                    then (time, sleep)
-                    else acc
-            )
-            (0, 0)
+    IntMap.foldrWithKey
+        ( \time sleep acc@(_, maxSleep) ->
+            if maxSleep < sleep
+                then (time, sleep)
+                else acc
+        )
+        (0, 0)
+
+mostSameMinuteId :: IntMap (IntMap Int) -> (Int, Int)
+mostSameMinuteId counts =
+    let (guardId, time, _) =
+            IntMap.foldrWithKey
+                ( \guardId' time' acc@(_, _, maxSleep) ->
+                    let (maxTime, sleep) = mostMinutesTime time'
+                     in if maxSleep < sleep
+                            then (guardId', maxTime, sleep)
+                            else acc
+                )
+                (0, 0, 0)
+                counts
+     in (guardId, time)
